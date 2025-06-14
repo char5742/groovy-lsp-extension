@@ -130,28 +130,6 @@ groovy-lsp-extension/
 - ESModulesを使用
 - ソースマップ生成を有効化
 
-## package-info.java
+## パッケージレベルの設定
 
-各パッケージに`package-info.java`を配置し、JSpecifyの`@NullMarked`を適用：
-
-```java
-// domain層の例
-@NullMarked
-package com.groovylsp.domain.model;
-import org.jspecify.annotations.NullMarked;
-
-// application層の例
-@NullMarked
-package com.groovylsp.application.usecase;
-import org.jspecify.annotations.NullMarked;
-
-// infrastructure層の例
-@NullMarked
-package com.groovylsp.infrastructure.lsp;
-import org.jspecify.annotations.NullMarked;
-
-// presentation層の例
-@NullMarked
-package com.groovylsp.presentation.server;
-import org.jspecify.annotations.NullMarked;
-```
+各パッケージには適切な設定ファイルを配置し、Null安全性を担保する設計を適用します。

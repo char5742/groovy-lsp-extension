@@ -60,54 +60,11 @@ cd ../vscode-extension && npm install
 
 #### Javaコード（JUnit 5）
 
-```java
-@Test
-@DisplayName("補完候補を正しく返すこと")
-void shouldReturnCompletionItems() {
-    // Given
-    var position = new Position(10, 5);
-    var context = CompletionContext.builder()
-        .triggerKind(CompletionTriggerKind.Invoked)
-        .build();
-    
-    // When
-    var result = completionService.complete(document, position, context);
-    
-    // Then
-    assertThat(result)
-        .isRight()
-        .extracting(CompletionList::getItems)
-        .asList()
-        .hasSize(3)
-        .extracting("label")
-        .containsExactlyInAnyOrder("given", "when", "then");
-}
-```
+JUnit 5を使用して、Givenな条件でWhenの操作を行い、Thenの結果を検証する構造でテストを記述します。VavrのEitherやOptionなどの関数型データ構造に対する検証も含めます。
 
 #### Mock JSON-RPC通信テスト（lsp4j）
 
-lsp4jには`org.eclipse.lsp4j.jsonrpc.services`を使ったMock JSON-RPC通信テストのサンプルがあり、JUnitベースでプロトコル面を検証できます。
-
-```java
-@Test
-@DisplayName("JSON-RPCプロトコルのテスト")
-void shouldHandleJsonRpcProtocol() {
-    // Given: Mock JSON-RPCエンドポイントの作成
-    var mockService = mock(LanguageServer.class);
-    var endpoint = ServiceEndpoints.toEndpoint(mockService);
-    
-    // JSON-RPCメッセージのシミュレーション
-    var launcher = Launcher.createLauncher(mockService, LanguageClient.class,
-        new ByteArrayInputStream(jsonRequest.getBytes()),
-        new ByteArrayOutputStream());
-    
-    // When: リクエストの送信
-    launcher.startListening();
-    
-    // Then: プロトコルレベルでの検証
-    verify(mockService).initialize(any());
-}
-```
+lsp4jのJSON-RPC通信テスト機能を使用して、プロトコルレベルでの動作検証を行います。モックを使用したエンドポイントのテストやメッセージのシミュレーションが可能です。
 
 #### TypeScriptコード（Mocha/Chai）
 
@@ -134,95 +91,19 @@ describe('GroovyLanguageClient', () => {
 
 #### JSpecifyによるnullability管理
 
-各パッケージに`package-info.java`を作成し、デフォルトnon-nullを宣言：
-
-```java
-@NullMarked
-package com.groovylsp.domain.model;
-
-import org.jspecify.annotations.NullMarked;
-```
-
-nullを許容する場合のみ`@Nullable`を明示：
-
-```java
-@NullMarked
-public class Symbol {
-    private final String name;                    // non-null（デフォルト）
-    private final SymbolKind kind;               // non-null（デフォルト）
-    private final @Nullable String documentation; // nullable（明示的）
-    
-    public Symbol(String name, SymbolKind kind, @Nullable String documentation) {
-        this.name = Objects.requireNonNull(name);
-        this.kind = Objects.requireNonNull(kind);
-        this.documentation = documentation;
-    }
-    
-    public @Nullable String getDocumentation() {
-        return documentation;
-    }
-}
-```
+各パッケージレベルでデフォルトnon-nullを宣言し、nullを許容する場合のみアノテーションで明示します。これによりコンパイル時のnull安全性を確保します。
 
 #### Vavrの活用
 
-```java
-// × 避けるべきコード
-try {
-    var result = parseGroovyFile(path);
-    return result;
-} catch (IOException e) {
-    logger.error("Failed to parse file", e);
-    return null;
-}
-
-// ○ 推奨コード
-return Try.of(() -> parseGroovyFile(path))
-    .onFailure(e -> logger.error("Failed to parse file", e))
-    .toEither()
-    .mapLeft(ErrorResponse::from);
-```
+例外処理にはTryモナドを使用し、関数型のエラーハンドリングを行います。これにより例外の明示的な扱いとエラーの型安全性が確保されます。
 
 #### JSpecifyとVavrの併用
 
-```java
-@NullMarked
-public class DocumentService {
-    // 内部APIはVavrを使用
-    public Either<DocumentError, Document> loadDocument(Path path) {
-        return Try.of(() -> Files.readString(path))
-            .toEither()
-            .mapLeft(DocumentError::from)
-            .flatMap(this::parseDocument);
-    }
-    
-    // 外部API（LSPプロトコル）はJSpecifyを使用
-    public @Nullable TextDocumentItem getDocument(@Nullable String uri) {
-        if (uri == null) return null;
-        
-        return Try.of(() -> Paths.get(new URI(uri)))
-            .mapTry(this::loadDocument)
-            .flatMap(either -> either.toTry())
-            .map(this::toTextDocumentItem)
-            .getOrElse((TextDocumentItem) null);
-    }
-}
+内部APIではVavrの関数型データ構造を活用し、外部API（LSPプロトコル）ではJSpecifyのnullabilityアノテーションを使用することで、適切な境界でのエラーハンドリングを実現します。
 
 #### Daggerによる依存性注入
 
-```java
-@Module
-public interface LanguageServerModule {
-    @Binds
-    CompletionService bindCompletionService(CompletionServiceImpl impl);
-    
-    @Provides
-    @Singleton
-    static GroovyParser provideGroovyParser() {
-        return new GroovyParser();
-    }
-}
-```
+Daggerを使用してコンパイル時の依存性注入を行います。モジュールとコンポーネントを定義し、インターフェースと実装の結合を管理します。
 
 ### TypeScript（VSCode拡張）
 

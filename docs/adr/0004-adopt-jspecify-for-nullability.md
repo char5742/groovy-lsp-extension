@@ -37,48 +37,16 @@ nullability注釈の選択肢：
 - 活発なメンテナンスと将来性
 
 ### 2. デフォルトnon-nullの設計思想
-```java
-// package-info.java
-@NullMarked
-package com.groovylsp.domain;
 
-// このパッケージ内では全てデフォルトでnon-null
-public class Symbol {
-    private final String name;  // non-null
-    private final @Nullable String documentation;  // 明示的にnullable
-}
-```
+パッケージレベルで@NullMarkedを宣言することで、デフォルトで全ての型がnon-nullとなります。nullを許容する場合のみ@Nullableを明示的に付与します。
 
 ### 3. NullAwayとの優れた統合
-```gradle
-option("NullAway:OnlyNullMarked", "true")
-```
-- `@NullMarked`スコープのみをチェック
-- 段階的な導入が可能
-- 高速な静的解析
+
+NullAwayの設定で`@NullMarked`スコープのみをチェック対象とすることで、段階的な導入が可能であり、高速な静的解析を実現します。
 
 ### 4. Vavrとの共存
-```java
-@NullMarked
-public class CompletionService {
-    // Vavrを使った関数型アプローチ
-    public Either<Error, CompletionList> complete(Position pos) {
-        return findSymbols(pos)
-            .flatMap(this::analyzeContext)
-            .map(this::createCompletions);
-    }
-    
-    // 外部APIとのインターフェース（JSpecify使用）
-    @Override
-    public @Nullable CompletionList handleRequest(
-            @Nullable CompletionParams params) {
-        if (params == null) return null;
-        
-        return complete(params.getPosition())
-            .getOrElse((CompletionList) null);
-    }
-}
-```
+
+内部実装ではVavrの関数型アプローチを使用し、外部APIとのインターフェースではJSpecifyのnullabilityアノテーションを使用します。これにより両方の利点を活かした設計が可能となります。
 
 ## 実装ガイドライン
 

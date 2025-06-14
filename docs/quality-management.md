@@ -24,134 +24,21 @@
 
 ### JUnitタグ設計
 
-カスタムアノテーションを作成してテストを分類します：
-
-```java
-// テスト分類用のカスタムアノテーション
-package com.groovylsp.test.annotations;
-
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
-// 高速テスト（100ms未満）
-@Target({ElementType.TYPE, ElementType.METHOD})
-@Retention(RetentionPolicy.RUNTIME)
-@Test
-@Tag("fast")
-public @interface FastTest {
-}
-
-// 低速テスト（100ms以上）
-@Target({ElementType.TYPE, ElementType.METHOD})
-@Retention(RetentionPolicy.RUNTIME)
-@Test
-@Tag("slow")
-public @interface SlowTest {
-}
-
-// 外部リソース依存テスト
-@Target({ElementType.TYPE, ElementType.METHOD})
-@Retention(RetentionPolicy.RUNTIME)
-@Test
-@Tag("external")
-public @interface ExternalTest {
-}
-
-// 統合テスト（slow + external）
-@Target({ElementType.TYPE, ElementType.METHOD})
-@Retention(RetentionPolicy.RUNTIME)
-@Test
-@Tag("slow")
-@Tag("external")
-public @interface IntegrationTest {
-}
-```
+カスタムアノテーションを作成してテストを分類します。高速テスト（100ms未満）、低速テスト（100ms以上）、外部リソース依存テスト、統合テストの四つのカテゴリでテストを管理します。
 
 使用例：
 
-```java
-import com.groovylsp.test.annotations.*;
-
-class CompletionServiceTest {
-    
-    @FastTest
-    @DisplayName("シンボル解決が正しく動作すること")
-    void shouldResolveSymbol() {
-        // ピュアな単体テスト
-    }
-    
-    @IntegrationTest
-    @DisplayName("ファイルシステムからの読み込みが正しく動作すること")
-    void shouldReadFromFileSystem() {
-        // 統合テスト
-    }
-    
-    @SlowTest
-    @DisplayName("大規模なASTの解析が正しく動作すること")
-    void shouldParseLargeAst() {
-        // 計算量の多いテスト
-    }
-}
-```
+カスタムアノテーションを使用して、テストの性質に応じて適切に分類します。ピュアな単体テストは@FastTest、統合テストは@IntegrationTest、計算量の多いテストは@SlowTestでマークします。
 
 ## 実行時間の可視化
 
 ### gradle-test-logger-pluginの設定
 
-`groovy-lsp/build.gradle`:
-```gradle
-plugins {
-    id 'com.adarshr.test-logger' version '3.2.0'
-}
-
-testlogger {
-    theme 'mocha'
-    showExceptions true
-    showStackTraces true
-    showFullStackTraces false
-    showCauses true
-    slowThreshold 100 // 100ms以上を遅いテストとして強調
-    showSummary true
-    showSimpleNames false
-    showPassed true
-    showSkipped true
-    showFailed true
-    showStandardStreams false
-    showPassedStandardStreams false
-    showSkippedStandardStreams false
-    showFailedStandardStreams false
-}
-```
+テスト実行時の出力を美しく表示するプラグインを設定します。mochaテーマを使用し、100ms以上のテストを遅いテストとして強調表示します。
 
 ### テスト実行時間レポート
 
-```gradle
-// カスタムタスクでテスト実行時間を集計
-task testTimeReport {
-    doLast {
-        def reportFile = file("${buildDir}/reports/test-times.csv")
-        reportFile.text = "Test Class,Method,Duration(ms),Tag\n"
-        
-        fileTree("${buildDir}/test-results/test").include("*.xml").each { file ->
-            def xml = new XmlSlurper().parse(file)
-            xml.testcase.each { testcase ->
-                def duration = (testcase.@time.toDouble() * 1000).round()
-                def tags = testcase.properties.property
-                    .findAll { it.@name == 'tag' }
-                    .collect { it.@value }
-                    .join(';')
-                reportFile << "${testcase.@classname},${testcase.@name},${duration},${tags}\n"
-            }
-        }
-    }
-}
-
-test.finalizedBy testTimeReport
-```
+カスタムタスクを定義してテスト実行時間をCSV形式で出力します。これによりパフォーマンスのボトルネックを特定し、最適化の対象を明確にします。
 
 ## テストの分類と実行
 
@@ -330,37 +217,7 @@ task checkTestQuality {
 
 ### 1. テストの書き方
 
-```java
-import com.groovylsp.test.annotations.*;
-
-// Fast Test - 純粋な単体テスト
-@FastTest
-void shouldCalculateCompletionScore() {
-    // Given - インメモリのデータのみ使用
-    var symbol = Symbol.of("testMethod", SymbolKind.Method);
-    var context = CompletionContext.of("test", 4);
-    
-    // When - 純粋関数の呼び出し
-    var score = scorer.calculate(symbol, context);
-    
-    // Then
-    assertThat(score).isEqualTo(0.8);
-}
-
-// Integration Test - 統合テスト
-@IntegrationTest
-void shouldCompleteFromWorkspace() {
-    // Given - ファイルシステムやパーサーを使用
-    var workspace = TestWorkspace.create();
-    workspace.addFile("Test.groovy", "class Test { }");
-    
-    // When
-    var completions = service.complete(workspace, position);
-    
-    // Then
-    assertThat(completions).isNotEmpty();
-}
-```
+テストの性質に応じて適切なアノテーションを使用します。Fast Testはインメモリのデータのみを使用する純粋な単体テスト、Integration Testはファイルシステムやパーサーなどの外部リソースを使用する統合テストです。
 
 ### 2. テスト時間の監視
 

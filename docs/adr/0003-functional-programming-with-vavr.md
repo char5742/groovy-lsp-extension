@@ -26,28 +26,8 @@ Javaの標準機能だけでは、これらの課題に対して十分な解決�
 ## 根拠
 
 ### 1. 明示的なエラーハンドリング
-```java
-// × 従来のアプローチ
-public CompletionList complete(String uri, Position pos) {
-    try {
-        Document doc = documentService.getDocument(uri);
-        if (doc == null) {
-            return new CompletionList(Collections.emptyList());
-        }
-        return analyzer.analyze(doc, pos);
-    } catch (IOException e) {
-        logger.error("Failed to complete", e);
-        return new CompletionList(Collections.emptyList());
-    }
-}
 
-// ○ Vavrを使用したアプローチ
-public Either<CompletionError, CompletionList> complete(String uri, Position pos) {
-    return documentService.getDocument(uri)
-        .toEither(CompletionError.documentNotFound(uri))
-        .flatMap(doc -> analyzer.analyze(doc, pos));
-}
-```
+従来のtry-catchベースのエラーハンドリングの代わりに、Eitherモナドを使用してエラーを型として明示的に扱います。これによりエラー処理の漏れをコンパイル時に検出できます。
 
 ### 2. コンポーザビリティ
 - モナディックな操作により、処理の連鎖が明確
@@ -60,74 +40,30 @@ public Either<CompletionError, CompletionList> complete(String uri, Position pos
 - 意図が型シグネチャに現れる
 
 ### 4. ステップベースの処理
-```java
-public Either<ValidationError, ProcessedDocument> processDocument(String content) {
-    return validateSyntax(content)
-        .flatMap(this::parseDocument)
-        .flatMap(this::resolveSymbols)
-        .flatMap(this::performTypeCheck)
-        .map(this::optimizeAst);
-}
-```
+
+モナディックな操作により、複数の処理ステップを連鎖させ、エラーが発生した場合は自動的に伝搬されるようにします。
 
 ## 実装ガイドライン
 
 ### Tryモナドの使用
-```java
-// I/O操作や外部リソースアクセス
-public Try<String> readFile(Path path) {
-    return Try.of(() -> Files.readString(path));
-}
-```
+
+I/O操作や外部リソースアクセスにおいて、例外を値として扱います。
 
 ### Optionモナドの使用
-```java
-// Nullableな値の表現
-public Option<Symbol> findSymbol(String name) {
-    return Option.of(symbolTable.get(name));
-}
-```
+
+null可能性のある値を明示的に表現し、Null Pointer Exceptionを防ぎます。
 
 ### Eitherモナドの使用
-```java
-// ビジネスエラーの表現
-public Either<ParseError, GroovyAst> parse(String source) {
-    return parser.parse(source)
-        .toEither()
-        .mapLeft(ParseError::from);
-}
-```
+
+ビジネスエラーを型として表現し、正常系と異常系の両方を型安全に扱います。
 
 ### パターンマッチング
-```java
-// Vavrのパターンマッチングを活用
-public String formatMessage(Either<Error, Result> either) {
-    return either.fold(
-        error -> "Error: " + error.getMessage(),
-        result -> "Success: " + result.getValue()
-    );
-}
-```
+
+Vavrのfoldメソッドなどを使用して、値の状態に応じた処理を簡潔に記述します。
 
 ## エラー型の設計
 
-```java
-// ドメイン層
-public sealed interface DomainError {
-    record ParseError(String message, Position position) implements DomainError {}
-    record ValidationError(List<String> violations) implements DomainError {}
-}
-
-// アプリケーション層
-public sealed interface ApplicationError {
-    record NotFound(String resource) implements ApplicationError {}
-    record InvalidRequest(String reason) implements ApplicationError {}
-    
-    static ApplicationError from(DomainError error) {
-        return new InvalidRequest(error.toString());
-    }
-}
-```
+sealed interfaceを使用してドメイン層とアプリケーション層のエラーを型として定義し、レイヤー間での適切な変換を行います。
 
 ## 影響
 
@@ -167,33 +103,7 @@ ADR-0004でJSpecifyを採用したことに伴い、VavrとJSpecifyの使い分�
 
 ### 具体的な使い分け
 
-```java
-@NullMarked
-package com.groovylsp.application;
-
-public class CompletionUseCase {
-    // 内部ロジックはVavrで実装
-    public Either<CompletionError, CompletionList> complete(
-            Document document, Position position) {
-        return validatePosition(position)
-            .flatMap(pos -> findSymbols(document, pos))
-            .flatMap(this::createCompletions);
-    }
-    
-    // 外部API（LSPプロトコル）との境界ではJSpecify
-    public @Nullable CompletionList handleLspRequest(
-            @Nullable CompletionParams params) {
-        if (params == null) return null;
-        
-        // nullチェック後、内部ではVavrに変換
-        return Option.of(params.getTextDocument())
-            .flatMap(doc -> Option.of(documentService.find(doc.getUri())))
-            .map(doc -> complete(doc, params.getPosition()))
-            .flatMap(either -> either.toOption())
-            .getOrElse((CompletionList) null);
-    }
-}
-```
+内部ロジックではVavrの関数型データ構造を使用し、外部API（LSPプロトコル）との境界ではJSpecifyのnullabilityアノテーションを使用します。境界ではnullチェック後にVavrの型に変換するパターンを採用します。
 
 ### ガイドライン
 

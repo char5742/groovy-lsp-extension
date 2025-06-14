@@ -125,30 +125,7 @@ jobs:
 
 ### Error Prone + NullAway
 
-`groovy-lsp/build.gradle`:
-```gradle
-dependencies {
-    // JSpecifyアノテーション
-    api "org.jspecify:jspecify:1.0.0"
-    
-    // Error ProneとNullAway
-    errorprone "com.google.errorprone:error_prone_core:2.18.0"
-    errorprone "com.uber.nullaway:nullaway:0.10.24"
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.errorprone {
-        nullaway {
-            annotatedPackages.add("com.groovylsp")
-            treatGeneratedAsUnannotated = true
-            // JSpecifyモード：@NullMarkedスコープのみチェック
-            onlyNullMarked = true
-            // 将来的にJSpecifyの完全サポートを有効化する場合
-            // jspecifyMode = true
-        }
-    }
-}
-```
+Error ProneとNullAwayを使用して、コンパイル時のnull安全性チェックを実施します。JSpecifyアノテーションと連携し、@NullMarkedスコープのみをチェック対象とします。
 
 ### Spotless
 
@@ -166,25 +143,7 @@ spotless {
 
 ### ArchUnit
 
-`groovy-lsp/src/test/java/com/groovylsp/ArchitectureTest.java`:
-```java
-@AnalyzeClasses(packages = "com.groovylsp")
-class ArchitectureTest {
-    @ArchTest
-    static final ArchRule onionArchitecture = 
-        onionArchitecture()
-            .domainModels("..domain.model..")
-            .domainServices("..domain.service..")
-            .applicationServices("..application..")
-            .adapter("infrastructure", "..infrastructure..")
-            .adapter("presentation", "..presentation..");
-    
-    @ArchTest
-    static final ArchRule noCyclicDependencies = 
-        slices().matching("com.groovylsp.(*)..")
-            .should().beFreeOfCycles();
-}
-```
+ArchUnitを使用してアーキテクチャの制約を自動検証します。オニオンアーキテクチャのレイヤー間依存関係や、循環依存の不在をテストで保証します。
 
 ## カバレッジ設定
 
@@ -284,32 +243,7 @@ pre-push:
 
 ### Git設定
 
-`.gitconfig`:
-```ini
-[alias]
-    # コミット時の--no-verify禁止
-    commit = "!f() { \
-        for arg in \"$@\"; do \
-            case \"$arg\" in \
-                --no-verify|-n) \
-                    echo '🚫 --no-verify is prohibited'; \
-                    exit 1;; \
-            esac; \
-        done; \
-        command git commit \"$@\"; \
-    }; f"
-    
-    # プッシュ時の--no-verify禁止
-    push = "!f() { \
-        for arg in \"$@\"; do \
-            if [ \"$arg\" = \"--no-verify\" ]; then \
-                echo '🚫 --no-verify is prohibited'; \
-                exit 1; \
-            fi; \
-        done; \
-        command git push \"$@\"; \
-    }; f"
-```
+Gitのエイリアスを設定して、--no-verifyオプションの使用を禁止します。これにより、フックのバイパスを防ぎ、品質チェックが必ず実行されるようにします。
 
 ## デバッグ設定
 
