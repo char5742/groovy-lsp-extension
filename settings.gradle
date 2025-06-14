@@ -1,0 +1,3 @@
+rootProject.name = 'groovy-lsp-extension'
+
+include 'groovy-lsp'
