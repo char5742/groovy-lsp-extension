@@ -362,7 +362,7 @@ interface GroovyDiagnostic extends Diagnostic {
     range: Range
     severity: DiagnosticSeverity
     code?: GroovyDiagnosticCode
-    source: "groovy-lsp"
+    source: "lsp-core"
     message: string
     
     // 追加情報

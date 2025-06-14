@@ -10,7 +10,7 @@
 
 ```
 groovy-lsp-extension/
-├── groovy-lsp/                 # Java LSPコア実装
+├── lsp-core/                 # Java LSPコア実装
 │   ├── domain/                 # ドメイン層
 │   ├── application/            # アプリケーション層
 │   ├── infrastructure/         # インフラストラクチャ層

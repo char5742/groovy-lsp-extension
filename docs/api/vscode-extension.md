@@ -8,11 +8,11 @@
 
 ```json
 {
-    "name": "groovy-lsp",
+    "name": "lsp-core",
     "displayName": "Groovy Language Support",
     "description": "Groovy and Spock support with LSP",
     "version": "1.0.0",
-    "publisher": "groovy-lsp-team",
+    "publisher": "lsp-core-team",
     "engines": {
         "vscode": "^1.75.0"
     },
@@ -390,7 +390,7 @@ interface AssertionStep {
 
 ```typescript
 // 他の拡張機能から利用
-const groovyExt = vscode.extensions.getExtension('groovy-lsp-team.groovy-lsp');
+const groovyExt = vscode.extensions.getExtension('lsp-core-team.lsp-core');
 if (groovyExt) {
     const api = groovyExt.exports as GroovyExtensionAPI;
     

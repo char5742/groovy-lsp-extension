@@ -17,7 +17,7 @@ Thumbs.db
 # Test files
 test-lsp-client.py
 test-vscode-integration.js
-groovy-lsp-0.0.1-SNAPSHOT/
+lsp-core-0.0.1-SNAPSHOT/
 test-lsp/
 
 # Logs

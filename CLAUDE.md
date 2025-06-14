@@ -25,7 +25,7 @@ Groovy LSP ExtensionはGroovy言語のLanguage Server Protocol (LSP)実装で、
 
 ### Java LSPコア
 ```bash
-cd groovy-lsp
+cd lsp-core
 ./gradlew build              # ビルド
 ./gradlew test               # テスト実行
 ./gradlew jacocoTestReport   # カバレッジレポート生成
@@ -65,7 +65,7 @@ npm run lint:fix             # ESLint自動修正
 ## プロジェクト構造
 
 ```
-groovy-lsp/
+lsp-core/
 ├── src/main/java/com/groovylsp/
 │   ├── domain/          # ドメイン層（ビジネスロジック）
 │   ├── application/     # アプリケーション層（ユースケース）

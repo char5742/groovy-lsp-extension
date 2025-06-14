@@ -4,7 +4,7 @@
 
 ```
 groovy-lsp-extension/
-├── groovy-lsp/                          # Java LSPコア
+├── lsp-core/                          # Java LSPコア
 │   ├── build.gradle                     # Gradleビルド設定
 │   ├── settings.gradle                  # Gradle設定
 │   ├── gradle.properties                # Gradleプロパティ

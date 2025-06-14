@@ -14,14 +14,14 @@
 
 ```bash
 # リポジトリのクローン
-git clone https://github.com/your-org/groovy-lsp-extension.git
-cd groovy-lsp-extension
+git clone https://github.com/your-org/lsp-core-extension.git
+cd lsp-core-extension
 
 # Gitフックの設定
 ./scripts/setup.sh
 
 # 依存関係のインストール
-cd groovy-lsp && ./gradlew build
+cd lsp-core && ./gradlew build
 cd ../vscode-extension && npm install
 ```
 
@@ -76,7 +76,7 @@ describe('GroovyLanguageClient', () => {
         const clientOptions = createClientOptions();
         
         // When
-        const client = new LanguageClient('groovy-lsp', serverOptions, clientOptions);
+        const client = new LanguageClient('lsp-core', serverOptions, clientOptions);
         await client.start();
         
         // Then
@@ -137,7 +137,7 @@ async function loadConfiguration(): Promise<Config> {
 ### LSPコア
 
 ```bash
-cd groovy-lsp
+cd lsp-core
 
 # ビルド
 ./gradlew build
@@ -174,7 +174,7 @@ npm run lint
 
 ### LSPサーバーのデバッグ
 
-1. VSCodeでgroovy-lspフォルダを開く
+1. VSCodeでlsp-coreフォルダを開く
 2. `.vscode/launch.json`の"Debug LSP Server"を選択
 3. F5でデバッグ開始
 
