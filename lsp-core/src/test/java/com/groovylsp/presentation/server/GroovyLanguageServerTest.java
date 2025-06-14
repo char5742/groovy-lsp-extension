@@ -43,7 +43,7 @@ class GroovyLanguageServerTest {
   void testShutdown() throws Exception {
     // When
     CompletableFuture<Object> future = server.shutdown();
-    Object result = future.get();
+    future.get();
 
     // Then
     assertTrue(future.isDone());

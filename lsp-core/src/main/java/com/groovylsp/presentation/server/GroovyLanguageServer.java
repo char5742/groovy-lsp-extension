@@ -66,4 +66,9 @@ public class GroovyLanguageServer implements LanguageServer, LanguageClientAware
     this.client = client;
     this.textDocumentService.connect(client);
   }
+
+  @Nullable
+  public LanguageClient getClient() {
+    return client;
+  }
 }

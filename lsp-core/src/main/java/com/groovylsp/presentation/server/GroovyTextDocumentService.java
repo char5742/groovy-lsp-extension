@@ -38,4 +38,9 @@ public class GroovyTextDocumentService implements TextDocumentService, LanguageC
   public void connect(LanguageClient client) {
     this.client = client;
   }
+
+  @Nullable
+  protected LanguageClient getClient() {
+    return client;
+  }
 }

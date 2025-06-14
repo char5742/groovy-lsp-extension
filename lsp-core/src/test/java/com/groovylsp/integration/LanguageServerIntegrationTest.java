@@ -8,10 +8,12 @@ import com.groovylsp.infrastructure.di.DaggerServerComponent;
 import com.groovylsp.infrastructure.di.ServerComponent;
 import com.groovylsp.presentation.server.GroovyLanguageServer;
 import com.groovylsp.testing.IntegrationTest;
+import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
+import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +41,10 @@ class LanguageServerIntegrationTest {
     // Given
     InitializeParams params = new InitializeParams();
     params.setProcessId(12345);
-    params.setRootUri("file:///test/project");
+    WorkspaceFolder workspaceFolder = new WorkspaceFolder();
+    workspaceFolder.setUri("file:///test/project");
+    workspaceFolder.setName("test-project");
+    params.setWorkspaceFolders(Arrays.asList(workspaceFolder));
 
     // When - Initialize
     CompletableFuture<InitializeResult> initFuture = server.initialize(params);
@@ -51,7 +56,7 @@ class LanguageServerIntegrationTest {
 
     // When - Shutdown
     CompletableFuture<Object> shutdownFuture = server.shutdown();
-    Object shutdownResult = shutdownFuture.get();
+    shutdownFuture.get();
 
     // Then
     assertTrue(shutdownFuture.isDone());

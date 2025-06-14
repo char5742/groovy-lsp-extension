@@ -47,6 +47,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.3'
     testImplementation 'org.assertj:assertj-core:3.26.0'
     testImplementation 'org.mockito:mockito-core:5.12.0'
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
 }
 
 application {
@@ -89,7 +90,6 @@ tasks.withType(JavaCompile).configureEach {
             error()
             annotatedPackages.add("com.groovylsp")
             excludedFieldAnnotations.add("javax.inject.Inject")
-            excludedFieldAnnotations.add("com.google.inject.Inject")
             excludedFieldAnnotations.add("dagger.Lazy")
             checkOptionalEmptiness.set(true)
             acknowledgeRestrictiveAnnotations.set(true)
