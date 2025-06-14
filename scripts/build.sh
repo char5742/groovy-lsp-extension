@@ -5,7 +5,7 @@ echo "Building Groovy LSP Extension..."
 
 # Build LSP core
 echo "Building LSP core..."
-./gradlew :lsp-core:build
+cd lsp-core && ./gradlew build && cd ..
 
 # TODO: Build VSCode extension when implemented
 # echo "Building VSCode extension..."
