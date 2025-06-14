@@ -121,7 +121,7 @@ sequenceDiagram
 
 ログは以下の場所に出力されます：
 - VSCode: Output Channel "Groovy Language Server"
-- LSP Server: `~/.groovy-lsp/logs/`
+- LSP Server: `~/.lsp-core/logs/`
 
 ## 開発者向け情報
 
@@ -129,7 +129,7 @@ sequenceDiagram
 
 ```typescript
 // 拡張機能APIの取得
-const groovyApi = vscode.extensions.getExtension('groovy-lsp-team.groovy-lsp')?.exports;
+const groovyApi = vscode.extensions.getExtension('lsp-core-team.lsp-core')?.exports;
 
 // APIの利用例
 const projectInfo = await groovyApi.getProjectInfo(uri);

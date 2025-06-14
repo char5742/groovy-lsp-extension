@@ -1,0 +1,86 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'jacoco'
+    id 'com.diffplug.spotless' version '6.25.0'
+}
+
+group = 'com.groovylsp'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(23)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // LSP4J - Language Server Protocol for Java
+    implementation 'org.eclipse.lsp4j:org.eclipse.lsp4j:0.23.1'
+    implementation 'org.eclipse.lsp4j:org.eclipse.lsp4j.jsonrpc:0.23.1'
+    
+    // Vavr - Functional programming
+    implementation 'io.vavr:vavr:0.10.4'
+    
+    // JSpecify - Null safety annotations
+    implementation 'org.jspecify:jspecify:1.0.0'
+    
+    // Dagger - Dependency injection
+    implementation 'com.google.dagger:dagger:2.51.1'
+    annotationProcessor 'com.google.dagger:dagger-compiler:2.51.1'
+    
+    // Logging
+    implementation 'org.slf4j:slf4j-api:2.0.13'
+    implementation 'ch.qos.logback:logback-classic:1.5.6'
+    
+    // Testing
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.3'
+    testImplementation 'org.assertj:assertj-core:3.26.0'
+    testImplementation 'org.mockito:mockito-core:5.12.0'
+}
+
+application {
+    mainClass = 'com.groovylsp.Main'
+}
+
+test {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+spotless {
+    java {
+        importOrder()
+        removeUnusedImports()
+        googleJavaFormat('1.22.0')
+    }
+}
+
+// Error Prone configuration - commented out for now to get basic build working
+// TODO: Re-enable Error Prone after setting up the plugin properly
+
+// Ensure Java 23 features are enabled
+tasks.withType(JavaCompile).configureEach {
+    options.release = 23
+    options.compilerArgs.add('--enable-preview')
+}
+
+tasks.withType(JavaExec).configureEach {
+    jvmArgs '--enable-preview'
+}
+
+tasks.withType(Test).configureEach {
+    jvmArgs '--enable-preview'
+}

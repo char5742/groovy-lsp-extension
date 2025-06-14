@@ -1,0 +1,22 @@
+# Gradle
+*/build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files
+test-lsp-client.py
+test-vscode-integration.js
+lsp-core-0.0.1-SNAPSHOT/
+test-lsp/
+
+# Logs
+*.log

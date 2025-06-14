@@ -84,7 +84,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Run Fast Tests
-        run: cd groovy-lsp && ./gradlew fastTest
+        run: cd lsp-core && ./gradlew fastTest
   
   full-test:
     name: Full Test Suite
@@ -93,7 +93,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Run All Tests
-        run: cd groovy-lsp && ./gradlew test
+        run: cd lsp-core && ./gradlew test
 ```
 
 ## CodeQL統合
@@ -144,7 +144,7 @@ jacocoTestReport {
 ```yaml
 coverage:
   paths:
-    - groovy-lsp/build/reports/jacoco/test/jacocoTestReport.xml
+    - lsp-core/build/reports/jacoco/test/jacocoTestReport.xml
     - vscode-extension/coverage/lcov.info
   
   badge:

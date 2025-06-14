@@ -22,13 +22,13 @@ jobs:
     steps:
       # Java静的解析
       - name: Run Error Prone
-        run: cd groovy-lsp && ./gradlew errorProne
+        run: cd lsp-core && ./gradlew errorProne
       
       - name: Run Spotless Check
-        run: cd groovy-lsp && ./gradlew spotlessCheck
+        run: cd lsp-core && ./gradlew spotlessCheck
       
       - name: Run ArchUnit
-        run: cd groovy-lsp && ./gradlew archUnit
+        run: cd lsp-core && ./gradlew archUnit
       
       # TypeScript静的解析
       - name: Run ESLint
@@ -43,13 +43,13 @@ jobs:
     steps:
       # Javaテスト
       - name: Run Java Tests
-        run: cd groovy-lsp && ./gradlew test
+        run: cd lsp-core && ./gradlew test
       
       - name: Generate JaCoCo Report
-        run: cd groovy-lsp && ./gradlew jacocoTestReport
+        run: cd lsp-core && ./gradlew jacocoTestReport
       
       - name: Check Java Coverage
-        run: cd groovy-lsp && ./gradlew jacocoTestCoverageVerification
+        run: cd lsp-core && ./gradlew jacocoTestCoverageVerification
       
       # TypeScriptテスト
       - name: Run TypeScript Tests
@@ -79,7 +79,7 @@ jobs:
     steps:
       - name: Build All
         run: |
-          cd groovy-lsp && ./gradlew build
+          cd lsp-core && ./gradlew build
           cd ../vscode-extension && npm run build
       
       - name: Run Integration Tests
@@ -98,7 +98,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            groovy-lsp/build/libs/*.jar
+            lsp-core/build/libs/*.jar
             vscode-extension/*.vsix
 ```
 
@@ -129,7 +129,7 @@ Error ProneとNullAwayを使用して、コンパイル時のnull安全性チェ
 
 ### Spotless
 
-`groovy-lsp/build.gradle`:
+`lsp-core/build.gradle`:
 ```gradle
 spotless {
     java {
@@ -149,7 +149,7 @@ ArchUnitを使用してアーキテクチャの制約を自動検証します。
 
 ### JaCoCo設定
 
-`groovy-lsp/build.gradle`:
+`lsp-core/build.gradle`:
 ```gradle
 jacocoTestCoverageVerification {
     violationRules {
@@ -191,7 +191,7 @@ jacocoTestReport {
 ```yaml
 coverage:
   paths:
-    - groovy-lsp/build/reports/jacoco/test/jacocoTestReport.xml
+    - lsp-core/build/reports/jacoco/test/jacocoTestReport.xml
     - vscode-extension/coverage/lcov.info
   
   badge:
@@ -219,7 +219,7 @@ pre-commit:
   commands:
     java-format:
       glob: "*.java"
-      run: cd groovy-lsp && ./gradlew spotlessApply
+      run: cd lsp-core && ./gradlew spotlessApply
     
     typescript-lint:
       glob: "*.{ts,tsx}"
@@ -232,12 +232,12 @@ pre-push:
   commands:
     test:
       run: |
-        cd groovy-lsp && ./gradlew test
+        cd lsp-core && ./gradlew test
         cd ../vscode-extension && npm test
     
     coverage-check:
       run: |
-        cd groovy-lsp && ./gradlew jacocoTestCoverageVerification
+        cd lsp-core && ./gradlew jacocoTestCoverageVerification
         cd ../vscode-extension && npm run coverage
 ```
 
@@ -282,7 +282,7 @@ jacocoTestReport {
 
 2. テスト実行を確認
 ```bash
-cd groovy-lsp && ./gradlew test --info
+cd lsp-core && ./gradlew test --info
 ```
 
 ### 静的解析エラー
