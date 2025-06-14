@@ -40,10 +40,6 @@
 | コマンドID | タイトル | 説明 | キーバインド |
 |-----------|---------|------|-------------|
 | `groovy.organizeImports` | Organize Imports | インポートを整理 | `Shift+Alt+O` |
-| `groovy.generateGettersSetters` | Generate Getters/Setters | getter/setterを生成 | - |
-| `groovy.generateConstructor` | Generate Constructor | コンストラクタを生成 | - |
-| `groovy.generateToString` | Generate toString | toStringメソッドを生成 | - |
-| `groovy.generateEquals` | Generate equals/hashCode | equals/hashCodeを生成 | - |
 
 ### テスト関連コマンド
 
@@ -58,10 +54,6 @@
 
 | コマンドID | タイトル | 説明 | キーバインド |
 |-----------|---------|------|-------------|
-| `groovy.spock.generateTest` | Generate Spock Test | Spockテストを生成 | - |
-| `groovy.spock.addDataRow` | Add Data Row | whereブロックに行を追加 | - |
-| `groovy.spock.convertToParameterized` | Convert to Parameterized | パラメータ化テストに変換 | - |
-| `groovy.spock.extractDataTable` | Extract Data Table | データテーブルを抽出 | - |
 
 ## 設定
 
@@ -153,12 +145,6 @@
         "description": "Enable Spock framework support"
     },
     
-    "groovy.spock.generateBDDStyle": {
-        "type": "boolean",
-        "default": true,
-        "description": "Generate tests in BDD style"
-    },
-    
     "groovy.spock.dataTableAlignment": {
         "type": "boolean",
         "default": true,
@@ -169,6 +155,56 @@
         "type": "boolean",
         "default": true,
         "description": "Show inline hints for Spock blocks"
+    },
+    
+    "groovy.spock.mockGeneration": {
+        "type": "string",
+        "enum": ["auto", "manual"],
+        "default": "auto",
+        "description": "Mock generation style"
+    },
+    
+    "groovy.spock.interactionValidation": {
+        "type": "boolean",
+        "default": true,
+        "description": "Validate mock interactions"
+    },
+    
+    "groovy.spock.assertionVisualization": {
+        "type": "boolean",
+        "default": true,
+        "description": "Show power assertion visualization on hover"
+    },
+    
+    "groovy.spock.lifecycleMethodGeneration": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable lifecycle method generation"
+    },
+    
+    "groovy.spock.dataPipeCompletion": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable completion for data pipe syntax"
+    },
+    
+    "groovy.spock.configFile": {
+        "type": "string",
+        "default": "SpockConfig.groovy",
+        "description": "Path to Spock configuration file"
+    },
+    
+    "groovy.spock.parallelExecution": {
+        "type": "boolean",
+        "default": false,
+        "description": "Enable parallel test execution"
+    },
+    
+    "groovy.spock.parallelExecutionMode": {
+        "type": "string",
+        "enum": ["fixed", "dynamic"],
+        "default": "dynamic",
+        "description": "Parallel execution mode"
     }
 }
 ```
@@ -219,13 +255,16 @@ interface GroovyExtensionAPI {
     runTests(testFilter?: TestFilter): Promise<TestResult[]>;
     
     // コード生成
-    generateCode(params: GenerateCodeParams): Promise<TextEdit[]>;
-    
     // Spock機能
     spock: {
         isSpockFile(uri: Uri): Promise<boolean>;
         getTestMethods(uri: Uri): Promise<TestMethod[]>;
-        generateDataTable(params: DataTableParams): Promise<string>;
+        getBlockStructure(uri: Uri): Promise<SpockBlockInfo[]>;
+        validateInteractions(uri: Uri): Promise<InteractionValidation[]>;
+        getSharedFields(uri: Uri): Promise<SharedFieldInfo[]>;
+        getLifecycleMethods(uri: Uri): Promise<LifecycleMethod[]>;
+        getDataProviders(uri: Uri): Promise<DataProvider[]>;
+        getAssertionInfo(uri: Uri, position: Position): Promise<AssertionInfo>;
     };
 }
 ```
@@ -277,6 +316,74 @@ interface DataTableParams {
     rows?: string[][];
     alignment?: "left" | "right" | "center";
 }
+
+interface MockGenerationParams {
+    uri: Uri;
+    position: Position;
+    type: "mock" | "stub" | "spy";
+    className: string;
+    variableName?: string;
+    options?: {
+        global?: boolean;
+        verified?: boolean;
+        defaultResponse?: any;
+    };
+}
+
+interface InteractionParams {
+    mockName: string;
+    method: string;
+    arguments?: string[];
+    cardinality?: string; // e.g., "1", "1..3", "_"
+    response?: string;
+}
+
+interface SpockBlockInfo {
+    type: "given" | "when" | "then" | "expect" | "where" | "and" | "cleanup";
+    range: Range;
+    label?: string;
+    hasInteractions?: boolean;
+}
+
+interface InteractionValidation {
+    range: Range;
+    isValid: boolean;
+    message?: string;
+    severity: "error" | "warning";
+}
+
+interface SharedFieldInfo {
+    name: string;
+    type: string;
+    range: Range;
+    isInitialized: boolean;
+}
+
+interface LifecycleMethod {
+    type: "setup" | "cleanup" | "setupSpec" | "cleanupSpec";
+    range: Range;
+    exists: boolean;
+}
+
+interface DataProvider {
+    type: "table" | "pipe" | "combination";
+    variables: string[];
+    range: Range;
+    rowCount?: number;
+}
+
+interface AssertionInfo {
+    expression: string;
+    evaluationSteps: AssertionStep[];
+    passed: boolean;
+    range: Range;
+}
+
+interface AssertionStep {
+    expression: string;
+    value: any;
+    type: string;
+}
 ```
 
 ### 使用例
@@ -301,9 +408,37 @@ if (groovyExt) {
     if (await api.spock.isSpockFile(document.uri)) {
         const methods = await api.spock.getTestMethods(document.uri);
         console.log(`Found ${methods.length} test methods`);
+        
+        // ブロック構造の取得
+        const blocks = await api.spock.getBlockStructure(document.uri);
+        console.log(`Block structure:`, blocks);
+        
+        // アサーション情報の取得
+        const assertion = await api.spock.getAssertionInfo(document.uri, position);
+        console.log(`Assertion steps:`, assertion.evaluationSteps);
     }
 }
 ```
+
+## コードスニペット
+
+### Spock用スニペット
+
+| プレフィックス | 説明 | 展開後 |
+|-------------|------|--------|
+| `spec` | Spock specification | 完全なSpecificationクラス |
+| `feat` | Feature method | featureメソッドテンプレート |
+| `given` | Given block | givenブロック |
+| `whenthen` | When-Then blocks | when-thenブロックのペア |
+| `expect` | Expect block | expectブロック |
+| `where` | Where block with table | whereブロックとデータテーブル |
+| `mock` | Mock creation | Mock()呼び出し |
+| `interaction` | Mock interaction | インタラクション定義 |
+| `verifyall` | VerifyAll block | verifyAllブロック |
+| `setup` | Setup method | setupメソッド |
+| `setupspec` | SetupSpec method | setupSpecメソッド |
+| `shared` | @Shared field | @Sharedフィールド |
+| `datapipe` | Data pipe | データパイプ構文 |
 
 ## イベント
 
@@ -322,10 +457,24 @@ interface ProjectChangeEvent {
     project: Uri;
 }
 
+// Spock固有イベント
+interface SpockEvent {
+    type: "blockEntered" | "blockExited" | "interactionTriggered" | "assertionFailed";
+    specification: string;
+    feature?: string;
+    data?: any;
+}
+
 // 使用例
 api.onDidRunTests((event: TestRunEvent) => {
     if (event.type === 'finished') {
         showTestResults(event.tests);
+    }
+});
+
+api.spock.onSpockEvent((event: SpockEvent) => {
+    if (event.type === 'assertionFailed') {
+        showAssertionDetails(event.data);
     }
 });
 ```
@@ -393,3 +542,9 @@ interface GroovyCodeLens extends CodeLens {
 | `GROOVY_EXT_003` | プロジェクト設定の読み込みエラー |
 | `GROOVY_EXT_004` | テスト実行エラー |
 | `GROOVY_EXT_005` | デバッガー接続エラー |
+| `SPOCK_EXT_001` | 無効なブロック順序 |
+| `SPOCK_EXT_002` | モックインタラクションエラー |
+| `SPOCK_EXT_003` | データテーブル不整合 |
+| `SPOCK_EXT_004` | ライフサイクルメソッドエラー |
+| `SPOCK_EXT_005` | @Sharedフィールドエラー |
+| `SPOCK_EXT_006` | SpockConfig読み込みエラー |

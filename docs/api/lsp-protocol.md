@@ -97,7 +97,12 @@ interface GroovyServerCapabilities extends ServerCapabilities {
             // Spock特有コマンド
             "groovy.spock.generateDataTable",
             "groovy.spock.addTestCase",
-            "groovy.spock.convertToParameterized"
+            "groovy.spock.convertToParameterized",
+            "groovy.spock.generateMock",
+            "groovy.spock.addInteraction",
+            "groovy.spock.convertToVerifyAll",
+            "groovy.spock.generateLifecycleMethod",
+            "groovy.spock.showAssertionVisualization",
         ]
     }
     
@@ -107,6 +112,12 @@ interface GroovyServerCapabilities extends ServerCapabilities {
             dataTableCompletion: boolean
             blockValidation: boolean
             whereBlockAssist: boolean
+            mockInteractionCompletion: boolean
+            assertionVisualization: boolean
+            sharedFieldValidation: boolean
+            dataPipeCompletion: boolean
+            annotationSupport: boolean
+            verifyAllSupport: boolean
         }
     }
 }
@@ -149,7 +160,8 @@ interface GroovyCompletionItem extends CompletionItem {
         groovyType?: string  // 完全修飾型名
         isStatic?: boolean
         isDeprecated?: boolean
-        spockContext?: "given" | "when" | "then" | "expect" | "where"
+        spockContext?: "given" | "when" | "then" | "expect" | "where" | "and" | "cleanup"
+        mockType?: "mock" | "stub" | "spy" | "interaction"
     }
 }
 ```
@@ -178,7 +190,23 @@ interface GroovyHoverContent {
     spockInfo?: {
         blockType?: string
         dataVariables?: string[]
+        assertionSteps?: AssertionStep[]
+        mockInteractions?: MockInteraction[]
+        sharedFields?: string[]
     }
+}
+
+interface AssertionStep {
+    expression: string
+    value: any
+    passed: boolean
+}
+
+interface MockInteraction {
+    mock: string
+    method: string
+    cardinality: string
+    arguments: string[]
 }
 ```
 
@@ -232,23 +260,30 @@ interface ClasspathEntry {
 }
 ```
 
-### groovy/spock/generateDataTable
+### groovy/spock/getAssertionVisualization
 
-Spockのデータテーブルを生成します。
+アサーションの評価ステップを取得します。
 
 #### リクエスト
 ```typescript
-interface GenerateDataTableParams {
+interface GetAssertionVisualizationParams {
     textDocument: TextDocumentIdentifier
-    position: Position  // whereブロック内の位置
-    variables: string[]  // 変数名のリスト
+    position: Position  // アサーションの位置
 }
 ```
 
 #### レスポンス
 ```typescript
-interface GenerateDataTableResult {
-    edit: WorkspaceEdit
+interface AssertionVisualization {
+    expression: string
+    steps: Array<{
+        expression: string
+        value: any
+        type: string
+        passed?: boolean
+    }>
+    passed: boolean
+    range: Range
 }
 ```
 
@@ -305,6 +340,13 @@ enum GroovyDiagnosticCode {
     MISSING_THEN_BLOCK = 4001,
     WHERE_BLOCK_ERROR = 4002,
     DATA_TABLE_MISMATCH = 4003,
+    INVALID_MOCK_INTERACTION = 4004,
+    MISSING_MOCK_DEFINITION = 4005,
+    INVALID_LIFECYCLE_METHOD = 4006,
+    SHARED_FIELD_ERROR = 4007,
+    INVALID_SPOCK_ANNOTATION = 4008,
+    DATA_PIPE_ERROR = 4009,
+    VERIFY_ALL_ERROR = 4010,
     
     // 警告 (5000-5999)
     DEPRECATED_API = 5000,
@@ -335,6 +377,12 @@ interface GroovyDiagnostic extends Diagnostic {
         spockContext?: {
             block: string
             issue: string
+            featureMethod?: string
+            mockInfo?: {
+                mockName: string
+                expectedInteractions: number
+                actualInteractions: number
+            }
         }
     }
 }
@@ -361,8 +409,16 @@ interface GroovyLanguageServerSettings {
     
     // Spock設定
     "groovy.spock.enabled": boolean
-    "groovy.spock.generateWithBDD": boolean
     "groovy.spock.dataTableAlignment": boolean
+    "groovy.spock.mockValidation": boolean
+    "groovy.spock.assertionVisualization": boolean
+    "groovy.spock.sharedFieldValidation": boolean
+    "groovy.spock.annotationValidation": boolean
+    "groovy.spock.verifyAllSupport": boolean
+    "groovy.spock.dataPipeCompletion": boolean
+    "groovy.spock.configFile": string  // SpockConfig.groovyのパス
+    "groovy.spock.parallelExecution": boolean
+    "groovy.spock.parallelMode": "methods" | "classes" | "same_thread"
     
     // 診断
     "groovy.diagnostic.enable": boolean
@@ -396,6 +452,38 @@ interface ErrorResponse {
             command: string
         }>
     }
+}
+```
+
+## Spock特有の通知
+
+### spock/testRunProgress
+
+データ駆動テストの進捗を通知します。
+
+```typescript
+interface TestRunProgressParams {
+    specification: string
+    feature: string
+    iteration: number
+    totalIterations: number
+    dataVariables: Record<string, any>
+    status: "running" | "passed" | "failed" | "skipped"
+}
+```
+
+### spock/mockInteraction
+
+モックインタラクションの発生を通知します。
+
+```typescript
+interface MockInteractionParams {
+    mock: string
+    method: string
+    arguments: any[]
+    returnValue: any
+    timestamp: number
+    location: Location
 }
 ```
 
