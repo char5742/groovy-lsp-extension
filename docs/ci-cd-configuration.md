@@ -128,8 +128,12 @@ jobs:
 `groovy-lsp/build.gradle`:
 ```gradle
 dependencies {
+    // JSpecifyアノテーション
+    api "org.jspecify:jspecify:1.0.0"
+    
+    // Error ProneとNullAway
     errorprone "com.google.errorprone:error_prone_core:2.18.0"
-    errorprone "com.uber.nullaway:nullaway:0.10.10"
+    errorprone "com.uber.nullaway:nullaway:0.10.24"
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -137,6 +141,10 @@ tasks.withType(JavaCompile).configureEach {
         nullaway {
             annotatedPackages.add("com.groovylsp")
             treatGeneratedAsUnannotated = true
+            // JSpecifyモード：@NullMarkedスコープのみチェック
+            onlyNullMarked = true
+            // 将来的にJSpecifyの完全サポートを有効化する場合
+            // jspecifyMode = true
         }
     }
 }

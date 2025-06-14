@@ -88,6 +88,7 @@ groovy-lsp-extension/
 - ビジネスロジックとルールを含む
 - 外部依存を持たない純粋なJavaコード
 - Groovy言語の構造をモデル化
+- @NullMarkedでデフォルトnon-null
 
 ### アプリケーション層
 - ユースケースを実装
@@ -128,3 +129,29 @@ groovy-lsp-extension/
 - strictモードを有効化
 - ESModulesを使用
 - ソースマップ生成を有効化
+
+## package-info.java
+
+各パッケージに`package-info.java`を配置し、JSpecifyの`@NullMarked`を適用：
+
+```java
+// domain層の例
+@NullMarked
+package com.groovylsp.domain.model;
+import org.jspecify.annotations.NullMarked;
+
+// application層の例
+@NullMarked
+package com.groovylsp.application.usecase;
+import org.jspecify.annotations.NullMarked;
+
+// infrastructure層の例
+@NullMarked
+package com.groovylsp.infrastructure.lsp;
+import org.jspecify.annotations.NullMarked;
+
+// presentation層の例
+@NullMarked
+package com.groovylsp.presentation.server;
+import org.jspecify.annotations.NullMarked;
+```

@@ -132,6 +132,38 @@ describe('GroovyLanguageClient', () => {
 
 ### Java（LSPコア）
 
+#### JSpecifyによるnullability管理
+
+各パッケージに`package-info.java`を作成し、デフォルトnon-nullを宣言：
+
+```java
+@NullMarked
+package com.groovylsp.domain.model;
+
+import org.jspecify.annotations.NullMarked;
+```
+
+nullを許容する場合のみ`@Nullable`を明示：
+
+```java
+@NullMarked
+public class Symbol {
+    private final String name;                    // non-null（デフォルト）
+    private final SymbolKind kind;               // non-null（デフォルト）
+    private final @Nullable String documentation; // nullable（明示的）
+    
+    public Symbol(String name, SymbolKind kind, @Nullable String documentation) {
+        this.name = Objects.requireNonNull(name);
+        this.kind = Objects.requireNonNull(kind);
+        this.documentation = documentation;
+    }
+    
+    public @Nullable String getDocumentation() {
+        return documentation;
+    }
+}
+```
+
 #### Vavrの活用
 
 ```java
@@ -150,6 +182,31 @@ return Try.of(() -> parseGroovyFile(path))
     .toEither()
     .mapLeft(ErrorResponse::from);
 ```
+
+#### JSpecifyとVavrの併用
+
+```java
+@NullMarked
+public class DocumentService {
+    // 内部APIはVavrを使用
+    public Either<DocumentError, Document> loadDocument(Path path) {
+        return Try.of(() -> Files.readString(path))
+            .toEither()
+            .mapLeft(DocumentError::from)
+            .flatMap(this::parseDocument);
+    }
+    
+    // 外部API（LSPプロトコル）はJSpecifyを使用
+    public @Nullable TextDocumentItem getDocument(@Nullable String uri) {
+        if (uri == null) return null;
+        
+        return Try.of(() -> Paths.get(new URI(uri)))
+            .mapTry(this::loadDocument)
+            .flatMap(either -> either.toTry())
+            .map(this::toTextDocumentItem)
+            .getOrElse((TextDocumentItem) null);
+    }
+}
 
 #### Daggerによる依存性注入
 

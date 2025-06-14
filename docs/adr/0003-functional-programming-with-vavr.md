@@ -2,7 +2,7 @@
 
 ## ステータス
 
-承認済み
+承認済み（2024-06-14更新: JSpecifyとの併用方針を追加）
 
 ## コンテキスト
 
@@ -154,6 +154,74 @@ public sealed interface ApplicationError {
 1. メインメソッドでの最終的なエラーハンドリング
 2. スレッドの最上位でのキャッチオール
 3. 外部ライブラリとの境界（ただし即座にTryに変換）
+
+## JSpecifyとの併用方針（2024-06-14追加）
+
+ADR-0004でJSpecifyを採用したことに伴い、VavrとJSpecifyの使い分けを明確化します。
+
+### 基本原則
+
+1. **ビジネスロジック**: Vavrを優先使用
+2. **外部API境界**: JSpecifyを使用
+3. **内部では両方を適切に組み合わせる**
+
+### 具体的な使い分け
+
+```java
+@NullMarked
+package com.groovylsp.application;
+
+public class CompletionUseCase {
+    // 内部ロジックはVavrで実装
+    public Either<CompletionError, CompletionList> complete(
+            Document document, Position position) {
+        return validatePosition(position)
+            .flatMap(pos -> findSymbols(document, pos))
+            .flatMap(this::createCompletions);
+    }
+    
+    // 外部API（LSPプロトコル）との境界ではJSpecify
+    public @Nullable CompletionList handleLspRequest(
+            @Nullable CompletionParams params) {
+        if (params == null) return null;
+        
+        // nullチェック後、内部ではVavrに変換
+        return Option.of(params.getTextDocument())
+            .flatMap(doc -> Option.of(documentService.find(doc.getUri())))
+            .map(doc -> complete(doc, params.getPosition()))
+            .flatMap(either -> either.toOption())
+            .getOrElse((CompletionList) null);
+    }
+}
+```
+
+### ガイドライン
+
+| 状況 | 推奨アプローチ | 理由 |
+|------|--------------|------|
+| ドメインモデルの必須フィールド | JSpecify（デフォルトnon-null） | シンプルで効率的 |
+| オプショナルなフィールド | `@Nullable` または `Option<T>` | 用途に応じて選択 |
+| メソッドの戻り値（エラーあり） | `Either<Error, T>` | エラー処理の明確化 |
+| メソッドの戻り値（エラーなし） | JSpecify または `Option<T>` | nullabilityの意図次第 |
+| コレクション内のnull | `List<@Nullable T>` | Vavrコレクションは非null要素のみ |
+| 外部ライブラリとの統合 | JSpecify | 相互運用性 |
+
+### 移行パターン
+
+```java
+// 外部APIからの値をVavrに変換
+Option<String> name = Option.of(externalApi.getName());
+
+// Vavrの結果を外部APIに変換
+@Nullable String result = option.getOrElse((String) null);
+
+// EitherをJSpecifyスタイルに変換
+public @Nullable Result process(@Nullable Input input) {
+    return Option.of(input)
+        .toEither(Error.NULL_INPUT)
+        .flatMap(this::doProcess)
+        .getOrElse((Result) null);
+}
 
 ## 参考資料
 

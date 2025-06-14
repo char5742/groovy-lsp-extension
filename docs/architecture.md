@@ -82,7 +82,7 @@ groovy-lsp-extension/
 GitHub Actionsで以下を実行：
 
 1. **静的解析**
-   - Error Prone（NullAway含む）
+   - Error Prone（JSpecify対応のNullAway含む）
    - Spotless（フォーマット）
    - ArchUnit（アーキテクチャ検証）
 
