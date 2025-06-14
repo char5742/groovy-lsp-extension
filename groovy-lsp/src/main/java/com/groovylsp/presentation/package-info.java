@@ -1,6 +1,4 @@
-/**
- * Presentation layer - LSP server entry point and protocol handling.
- */
+/** Presentation layer - LSP server entry point and protocol handling. */
 @NullMarked
 package com.groovylsp.presentation;
 

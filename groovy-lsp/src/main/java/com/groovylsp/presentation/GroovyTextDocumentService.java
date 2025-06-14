@@ -9,36 +9,33 @@ import org.eclipse.lsp4j.services.LanguageClientAware;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.jspecify.annotations.Nullable;
 
-/**
- * Text document service implementation for Groovy files.
- */
+/** Text document service implementation for Groovy files. */
 public class GroovyTextDocumentService implements TextDocumentService, LanguageClientAware {
-    
-    @Nullable
-    private LanguageClient client;
 
-    @Override
-    public void didOpen(DidOpenTextDocumentParams params) {
-        // Will be implemented in future milestones
-    }
+  @Nullable private LanguageClient client;
 
-    @Override
-    public void didChange(DidChangeTextDocumentParams params) {
-        // Will be implemented in future milestones
-    }
+  @Override
+  public void didOpen(DidOpenTextDocumentParams params) {
+    // Will be implemented in future milestones
+  }
 
-    @Override
-    public void didClose(DidCloseTextDocumentParams params) {
-        // Will be implemented in future milestones
-    }
+  @Override
+  public void didChange(DidChangeTextDocumentParams params) {
+    // Will be implemented in future milestones
+  }
 
-    @Override
-    public void didSave(DidSaveTextDocumentParams params) {
-        // Will be implemented in future milestones
-    }
+  @Override
+  public void didClose(DidCloseTextDocumentParams params) {
+    // Will be implemented in future milestones
+  }
 
-    @Override
-    public void connect(LanguageClient client) {
-        this.client = client;
-    }
+  @Override
+  public void didSave(DidSaveTextDocumentParams params) {
+    // Will be implemented in future milestones
+  }
+
+  @Override
+  public void connect(LanguageClient client) {
+    this.client = client;
+  }
 }

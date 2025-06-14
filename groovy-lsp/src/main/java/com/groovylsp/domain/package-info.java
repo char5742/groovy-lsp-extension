@@ -1,6 +1,4 @@
-/**
- * Domain layer - Business logic and domain models.
- */
+/** Domain layer - Business logic and domain models. */
 @NullMarked
 package com.groovylsp.domain;
 

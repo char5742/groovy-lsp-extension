@@ -1,6 +1,4 @@
-/**
- * Infrastructure layer - External dependencies, LSP implementation, parsers.
- */
+/** Infrastructure layer - External dependencies, LSP implementation, parsers. */
 @NullMarked
 package com.groovylsp.infrastructure;
 

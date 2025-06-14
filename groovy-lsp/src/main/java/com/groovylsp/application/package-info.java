@@ -1,6 +1,4 @@
-/**
- * Application layer - Use cases and application services.
- */
+/** Application layer - Use cases and application services. */
 @NullMarked
 package com.groovylsp.application;
 

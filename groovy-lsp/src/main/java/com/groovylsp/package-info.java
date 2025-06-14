@@ -1,6 +1,4 @@
-/**
- * Groovy Language Server Protocol implementation.
- */
+/** Groovy Language Server Protocol implementation. */
 @NullMarked
 package com.groovylsp;
 
