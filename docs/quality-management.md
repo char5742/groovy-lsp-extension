@@ -24,26 +24,77 @@
 
 ### JUnitタグ設計
 
-```java
-// 実行速度ベースのタグ
-@Tag("fast")     // 100ms未満
-@Tag("slow")     // 100ms以上
-@Tag("external") // 外部リソース依存
+カスタムアノテーションを作成してテストを分類します：
 
-// 使用例
+```java
+// テスト分類用のカスタムアノテーション
+package com.groovylsp.test.annotations;
+
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+// 高速テスト（100ms未満）
+@Target({ElementType.TYPE, ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
 @Test
 @Tag("fast")
-@DisplayName("シンボル解決が正しく動作すること")
-void shouldResolveSymbol() {
-    // ピュアな単体テスト
+public @interface FastTest {
 }
 
+// 低速テスト（100ms以上）
+@Target({ElementType.TYPE, ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+@Test
+@Tag("slow")
+public @interface SlowTest {
+}
+
+// 外部リソース依存テスト
+@Target({ElementType.TYPE, ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+@Test
+@Tag("external")
+public @interface ExternalTest {
+}
+
+// 統合テスト（slow + external）
+@Target({ElementType.TYPE, ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
 @Test
 @Tag("slow")
 @Tag("external")
-@DisplayName("ファイルシステムからの読み込みが正しく動作すること")
-void shouldReadFromFileSystem() {
-    // 統合テスト
+public @interface IntegrationTest {
+}
+```
+
+使用例：
+
+```java
+import com.groovylsp.test.annotations.*;
+
+class CompletionServiceTest {
+    
+    @FastTest
+    @DisplayName("シンボル解決が正しく動作すること")
+    void shouldResolveSymbol() {
+        // ピュアな単体テスト
+    }
+    
+    @IntegrationTest
+    @DisplayName("ファイルシステムからの読み込みが正しく動作すること")
+    void shouldReadFromFileSystem() {
+        // 統合テスト
+    }
+    
+    @SlowTest
+    @DisplayName("大規模なASTの解析が正しく動作すること")
+    void shouldParseLargeAst() {
+        // 計算量の多いテスト
+    }
 }
 ```
 
@@ -280,9 +331,10 @@ task checkTestQuality {
 ### 1. テストの書き方
 
 ```java
+import com.groovylsp.test.annotations.*;
+
 // Fast Test - 純粋な単体テスト
-@Test
-@Tag("fast")
+@FastTest
 void shouldCalculateCompletionScore() {
     // Given - インメモリのデータのみ使用
     var symbol = Symbol.of("testMethod", SymbolKind.Method);
@@ -295,10 +347,8 @@ void shouldCalculateCompletionScore() {
     assertThat(score).isEqualTo(0.8);
 }
 
-// Slow Test - 統合テスト
-@Test
-@Tag("slow")
-@Tag("external")
+// Integration Test - 統合テスト
+@IntegrationTest
 void shouldCompleteFromWorkspace() {
     // Given - ファイルシステムやパーサーを使用
     var workspace = TestWorkspace.create();
