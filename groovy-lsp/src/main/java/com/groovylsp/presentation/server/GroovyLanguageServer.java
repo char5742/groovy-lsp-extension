@@ -1,4 +1,4 @@
-package com.groovylsp.presentation;
+package com.groovylsp.presentation.server;
 
 import java.util.concurrent.CompletableFuture;
 import javax.inject.Inject;

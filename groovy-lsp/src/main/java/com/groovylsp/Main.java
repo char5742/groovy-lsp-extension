@@ -2,7 +2,7 @@ package com.groovylsp;
 
 import com.groovylsp.infrastructure.di.DaggerServerComponent;
 import com.groovylsp.infrastructure.di.ServerComponent;
-import com.groovylsp.presentation.GroovyLanguageServer;
+import com.groovylsp.presentation.server.GroovyLanguageServer;
 import io.vavr.control.Either;
 import io.vavr.control.Try;
 import org.eclipse.lsp4j.jsonrpc.Launcher;

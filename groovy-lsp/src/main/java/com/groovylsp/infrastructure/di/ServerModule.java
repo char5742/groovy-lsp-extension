@@ -1,7 +1,7 @@
 package com.groovylsp.infrastructure.di;
 
-import com.groovylsp.presentation.GroovyTextDocumentService;
-import com.groovylsp.presentation.GroovyWorkspaceService;
+import com.groovylsp.presentation.server.GroovyTextDocumentService;
+import com.groovylsp.presentation.server.GroovyWorkspaceService;
 import dagger.Module;
 import dagger.Provides;
 import javax.inject.Singleton;

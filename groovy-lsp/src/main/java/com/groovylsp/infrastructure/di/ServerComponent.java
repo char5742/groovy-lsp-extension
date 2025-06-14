@@ -1,6 +1,6 @@
 package com.groovylsp.infrastructure.di;
 
-import com.groovylsp.presentation.GroovyLanguageServer;
+import com.groovylsp.presentation.server.GroovyLanguageServer;
 import dagger.Component;
 import javax.inject.Singleton;
 

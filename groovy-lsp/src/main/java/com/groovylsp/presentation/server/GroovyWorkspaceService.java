@@ -1,4 +1,4 @@
-package com.groovylsp.presentation;
+package com.groovylsp.presentation.server;
 
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidChangeWatchedFilesParams;
