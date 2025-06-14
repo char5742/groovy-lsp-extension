@@ -3,6 +3,8 @@ plugins {
     id 'application'
     id 'jacoco'
     id 'com.diffplug.spotless' version '6.25.0'
+    id 'net.ltgt.errorprone' version '4.1.0'
+    id 'net.ltgt.nullaway' version '2.1.0'
 }
 
 group = 'com.groovylsp'
@@ -37,6 +39,10 @@ dependencies {
     implementation 'org.slf4j:slf4j-api:2.0.13'
     implementation 'ch.qos.logback:logback-classic:1.5.6'
     
+    // Error Prone
+    errorprone 'com.google.errorprone:error_prone_core:2.36.0'
+    errorprone 'com.uber.nullaway:nullaway:0.12.1'
+    
     // Testing
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.3'
     testImplementation 'org.assertj:assertj-core:3.26.0'
@@ -62,19 +68,40 @@ jacocoTestReport {
 
 spotless {
     java {
-        importOrder()
-        removeUnusedImports()
-        googleJavaFormat('1.22.0')
+        target 'src/*/java/**/*.java'
+        googleJavaFormat()
     }
 }
 
-// Error Prone configuration - commented out for now to get basic build working
-// TODO: Re-enable Error Prone after setting up the plugin properly
+check.dependsOn spotlessCheck
 
-// Ensure Java 23 features are enabled
 tasks.withType(JavaCompile).configureEach {
     options.release = 23
     options.compilerArgs.add('--enable-preview')
+    options.compilerArgs.add('-Werror')
+    
+    options.errorprone {
+        allErrorsAsWarnings.set(false)
+        disableWarningsInGeneratedCode.set(true)
+        errorproneArgs.add("-XepExcludedPaths:.*/build/generated/.*")
+        
+        nullaway {
+            error()
+            annotatedPackages.add("com.groovylsp")
+            excludedFieldAnnotations.add("javax.inject.Inject")
+            excludedFieldAnnotations.add("com.google.inject.Inject")
+            excludedFieldAnnotations.add("dagger.Lazy")
+            checkOptionalEmptiness.set(true)
+            acknowledgeRestrictiveAnnotations.set(true)
+            jspecifyMode.set(true)
+        }
+    }
+    
+    if (name.toLowerCase().contains("test")) {
+        options.errorprone {
+            disable("NullAway")
+        }
+    }
 }
 
 tasks.withType(JavaExec).configureEach {
