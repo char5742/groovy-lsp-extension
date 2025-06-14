@@ -7,6 +7,11 @@ plugins {
     id 'net.ltgt.nullaway' version '2.1.0'
 }
 
+// 分離された設定ファイルを適用
+apply from: 'gradle/error-prone.gradle'
+apply from: 'gradle/spotless.gradle'
+apply from: 'gradle/testing.gradle'
+
 group = 'com.groovylsp'
 version = '0.0.1-SNAPSHOT'
 
@@ -54,60 +59,11 @@ application {
     mainClass = 'com.groovylsp.Main'
 }
 
-test {
-    useJUnitPlatform()
-    finalizedBy jacocoTestReport
-}
-
-jacocoTestReport {
-    dependsOn test
-    reports {
-        xml.required = true
-        html.required = true
-    }
-}
-
-spotless {
-    java {
-        target 'src/*/java/**/*.java'
-        googleJavaFormat()
-    }
-}
-
-check.dependsOn spotlessCheck
-
 tasks.withType(JavaCompile).configureEach {
     options.release = 23
     options.compilerArgs.add('--enable-preview')
-    options.compilerArgs.add('-Werror')
-    
-    options.errorprone {
-        allErrorsAsWarnings.set(false)
-        disableWarningsInGeneratedCode.set(true)
-        errorproneArgs.add("-XepExcludedPaths:.*/build/generated/.*")
-        
-        nullaway {
-            error()
-            annotatedPackages.add("com.groovylsp")
-            excludedFieldAnnotations.add("javax.inject.Inject")
-            excludedFieldAnnotations.add("dagger.Lazy")
-            checkOptionalEmptiness.set(true)
-            acknowledgeRestrictiveAnnotations.set(true)
-            jspecifyMode.set(true)
-        }
-    }
-    
-    if (name.toLowerCase().contains("test")) {
-        options.errorprone {
-            disable("NullAway")
-        }
-    }
 }
 
 tasks.withType(JavaExec).configureEach {
-    jvmArgs '--enable-preview'
-}
-
-tasks.withType(Test).configureEach {
     jvmArgs '--enable-preview'
 }

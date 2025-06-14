@@ -1,0 +1,8 @@
+// Spotlessコードフォーマット設定
+
+spotless {
+    java {
+        target 'src/*/java/**/*.java'
+        googleJavaFormat()
+    }
+}
