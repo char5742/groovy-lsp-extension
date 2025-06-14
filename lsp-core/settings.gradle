@@ -1,0 +1,14 @@
+rootProject.name = 'groovy-lsp-core'
+
+// Disable build cache to avoid conflicts with linters and formatters
+buildCache {
+    local {
+        enabled = false
+    }
+    remote(HttpBuildCache) {
+        enabled = false
+    }
+}
+
+// Ensure configuration cache is disabled
+enableFeaturePreview('STABLE_CONFIGURATION_CACHE')
