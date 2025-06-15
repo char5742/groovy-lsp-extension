@@ -1,5 +1,6 @@
 package com.groovylsp.infrastructure.di;
 
+import com.groovylsp.application.usecase.DiagnosticUseCase;
 import com.groovylsp.application.usecase.TextDocumentSyncUseCase;
 import com.groovylsp.domain.repository.TextDocumentRepository;
 import com.groovylsp.infrastructure.repository.InMemoryTextDocumentRepository;
@@ -21,8 +22,9 @@ public class ServerModule {
 
   @Provides
   @Singleton
-  public GroovyTextDocumentService provideTextDocumentService(TextDocumentSyncUseCase syncUseCase) {
-    return new GroovyTextDocumentService(syncUseCase);
+  public GroovyTextDocumentService provideTextDocumentService(
+      TextDocumentSyncUseCase syncUseCase, DiagnosticUseCase diagnosticUseCase) {
+    return new GroovyTextDocumentService(syncUseCase, diagnosticUseCase);
   }
 
   @Provides
