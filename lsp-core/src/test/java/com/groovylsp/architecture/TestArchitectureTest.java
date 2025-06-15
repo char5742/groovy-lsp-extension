@@ -8,16 +8,15 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import org.junit.jupiter.api.Disabled;
 
-@AnalyzeClasses(
-    packages = "com.groovylsp",
-    importOptions = ImportOption.OnlyIncludeTests.class
-)
-public class TestArchitectureTest {
+@AnalyzeClasses(packages = "com.groovylsp", importOptions = ImportOption.OnlyIncludeTests.class)
+public final class TestArchitectureTest {
 
   @ArchTest
-  static final ArchRule testsShouldNotBeDisabled = 
+  static final ArchRule testsShouldNotBeDisabled =
       noMethods()
           .should()
           .beAnnotatedWith(Disabled.class)
           .because("Tests should not be disabled. Fix or remove them instead");
+
+  private TestArchitectureTest() {}
 }

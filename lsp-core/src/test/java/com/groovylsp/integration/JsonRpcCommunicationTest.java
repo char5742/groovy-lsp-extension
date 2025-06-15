@@ -16,14 +16,13 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
+import org.eclipse.lsp4j.MessageActionItem;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.PublishDiagnosticsParams;
+import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageClient;
-import org.eclipse.lsp4j.MessageActionItem;
-import org.eclipse.lsp4j.MessageParams;
-import org.eclipse.lsp4j.MessageType;
-import org.eclipse.lsp4j.PublishDiagnosticsParams;
-import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.junit.jupiter.api.Test;
 
 /** Tests for JSON-RPC communication. */
@@ -48,7 +47,8 @@ class JsonRpcCommunicationTest {
     }
 
     @Override
-    public CompletableFuture<MessageActionItem> showMessageRequest(ShowMessageRequestParams requestParams) {
+    public CompletableFuture<MessageActionItem> showMessageRequest(
+        ShowMessageRequestParams requestParams) {
       return CompletableFuture.completedFuture(null);
     }
 
@@ -83,11 +83,11 @@ class JsonRpcCommunicationTest {
       TestLanguageClient testClient = new TestLanguageClient();
       Launcher<org.eclipse.lsp4j.services.LanguageServer> clientLauncher =
           LSPLauncher.createClientLauncher(testClient, clientInput, clientOutput);
-      
+
       // Start both launchers listening
       Future<Void> serverListeningFuture = serverLauncher.startListening();
       Future<Void> clientListeningFuture = clientLauncher.startListening();
-      
+
       org.eclipse.lsp4j.services.LanguageServer remoteServer = clientLauncher.getRemoteProxy();
 
       // Send initialize request
