@@ -42,7 +42,7 @@
     "format": "biome format --write ./src",
     "test": "xvfb-run -a bun run scripts/run-integration.ts",
     "test:scenarios": "bun scripts/generate-test-scenarios.ts",
-    "coverage": "c8 --check-coverage --lines 80 --functions 80 --branches 80 bun test"
+    "coverage": "c8 --check-coverage --lines 80 --functions 80 --branches 80 xvfb-run -a bun run scripts/run-integration.ts"
   },
   "license": "MIT",
   "devDependencies": {
