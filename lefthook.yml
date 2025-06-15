@@ -33,6 +33,7 @@ pre-commit:
       root: "vscode-extension/"
       glob: "*.{js,ts,jsx,tsx,json}"
       run: npx biome format --write {staged_files}
+      stage_fixed: true
       skip:
         - merge
         - rebase
@@ -44,11 +45,24 @@ pre-commit:
       root: "vscode-extension/"
       glob: "*.{js,ts,jsx,tsx}"
       run: npx biome check --write {staged_files}
+      stage_fixed: true
       skip:
         - merge
         - rebase
       fail_text: |
         Biomeリントエラーが検出されました。自動修正を試みています。
+    
+    generate-scenarios:
+      tags: [test, typescript]
+      root: "vscode-extension/"
+      glob: "{src/test/**/*.{test,spec}.ts,scripts/generate-test-scenarios.ts}"
+      run: npm run test:scenarios
+      stage_fixed: true
+      skip:
+        - merge
+        - rebase
+      fail_text: |
+        テストシナリオの生成に失敗しました。
 
 pre-push:
   parallel: false
@@ -60,6 +74,7 @@ pre-push:
       fail_text: |
         Javaテストが失敗しました。すべてのテストが成功してからプッシュしてください。
         './gradlew test' を実行して失敗したテストを確認
+        根本原因から対応して短絡的な修正は避けてください
     
     java-integration-tests:
       tags: [test, java, integration]
@@ -67,14 +82,16 @@ pre-push:
       run: ./gradlew :test --tests "*IntegrationTest"
       fail_text: |
         統合テストが失敗しました。すべての統合テストが成功してからプッシュしてください。
+        根本原因から対応して短絡的な修正は避けてください
     
     typescript-tests:
       tags: [test, typescript]
       root: "vscode-extension/"
-      run: npm test
+      run: npm run test
       fail_text: |
         TypeScriptテストが失敗しました。すべてのテストが成功してからプッシュしてください。
         'npm test' を実行して失敗したテストを確認
+        根本原因から対応して短絡的な修正は避けてください
     
     coverage-check:
       tags: [coverage, java]
@@ -92,7 +109,7 @@ commit-msg:
         # コミットメッセージがConventional Commits仕様に準拠しているかチェック
         # 最初の行のみをチェック（タイトル行）
         commit_regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+$'
-        first_line=$(head -n 1 "$1")
+        first_line=$(head -n 1 {1})
         if ! echo "$first_line" | grep -qE "$commit_regex"; then
           echo "コミットメッセージがConventional Commits仕様に準拠していません！"
           echo "形式: <type>(<scope>): <subject>"

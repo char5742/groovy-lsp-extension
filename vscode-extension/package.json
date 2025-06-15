@@ -40,10 +40,10 @@
     "lint": "biome check ./src",
     "lint:fix": "biome check --write ./src",
     "format": "biome format --write ./src",
-    "pretest": "npm run compile && npm run lint && npm run test:scenarios",
+    "pretest": "npm run compile && npm run lint",
     "test": "node ./out/test/runTest.js",
-    "test:unit": "npm run pretest && node ./out/test/runTest.js",
-    "test:integration": "npm run pretest && VSCODE_TEST_SUITE=integration node ./out/test/runTest.js",
+    "test:unit": "npm run pretest && mocha 'out/test/unit/**/*.test.js' --timeout 5000",
+    "test:integration": "npm run pretest && node ./out/test/runTest.js",
     "test:scenarios": "ts-node scripts/generate-test-scenarios.ts"
   },
   "license": "MIT",
