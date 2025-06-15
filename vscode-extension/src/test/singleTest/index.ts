@@ -1,3 +1,5 @@
+// biome-ignore lint/style/noNamespaceImport: テストで必要
+// biome-ignore lint/correctness/noNodejsModules: テストで必要
 import * as path from 'node:path';
 import Mocha = require('mocha');
 
@@ -23,7 +25,6 @@ export function run(): Promise<void> {
         }
       });
     } catch (err) {
-      console.error(err);
       reject(err);
     }
   });

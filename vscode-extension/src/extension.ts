@@ -1,12 +1,17 @@
+// biome-ignore lint/style/noNamespaceImport: VSCode拡張機能では名前空間インポートが標準
+// biome-ignore lint/correctness/noNodejsModules: Node.js環境での実行が前提
 import * as path from 'node:path';
+// biome-ignore lint/style/noNamespaceImport: VSCode APIは名前空間での使用が推奨
+// biome-ignore lint/correctness/noUndeclaredDependencies: vscodeは実行時に提供される
 import * as vscode from 'vscode';
 import {
   LanguageClient,
   type LanguageClientOptions,
   type ServerOptions,
+  Trace,
   TransportKind,
 } from 'vscode-languageclient/node';
-import type { ExtensionApi } from './types';
+import type { ExtensionApi } from './types.ts';
 
 let client: LanguageClient | undefined;
 
@@ -57,7 +62,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 
   // トレース設定（設定から読み取る）
   const traceServer = vscode.workspace.getConfiguration('groovy-lsp').get<string>('trace.server', 'off');
-  await client.setTrace(traceServer as any);
+  const traceValue =
+    traceServer === 'verbose' ? Trace.Verbose : traceServer === 'messages' ? Trace.Messages : Trace.Off;
+  await client.setTrace(traceValue);
 
   // デバッグ用にクライアントイベントをログ
   client.onDidChangeState((event) => {

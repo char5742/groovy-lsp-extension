@@ -1,5 +1,7 @@
 import { glob } from 'glob';
 import Mocha = require('mocha');
+// biome-ignore lint/style/noNamespaceImport: テストで必要
+// biome-ignore lint/correctness/noNodejsModules: テストで必要
 import * as path from 'node:path';
 
 export async function run(): Promise<void> {
@@ -12,39 +14,32 @@ export async function run(): Promise<void> {
   });
 
   const testsRoot = path.resolve(__dirname, '..');
+  // すべてのテストファイルを検索
+  const files = await glob('**/**.test.js', { cwd: testsRoot });
 
-  try {
-    // すべてのテストファイルを検索
-    const files = await glob('**/**.test.js', { cwd: testsRoot });
-
-    // テストスイートにファイルを追加
-    for (const f of files) {
-      mocha.addFile(path.resolve(testsRoot, f));
-    }
-
-    // mochaテストを実行
-    return new Promise<void>((resolve, reject) => {
-      const runner = mocha.run((failures: number) => {
-        if (failures > 0) {
-          reject(new Error(`${failures} tests failed.`));
-        } else {
-          resolve();
-        }
-      });
-
-      // タイムアウト対策: 30秒でテストを強制終了
-      const timeout = setTimeout(() => {
-        console.error('Test execution timeout - forcing completion');
-        runner.abort();
-        resolve();
-      }, 30000);
-
-      runner.on('end', () => {
-        clearTimeout(timeout);
-      });
-    });
-  } catch (err) {
-    console.error(err);
-    throw err;
+  // テストスイートにファイルを追加
+  for (const f of files) {
+    mocha.addFile(path.resolve(testsRoot, f));
   }
+
+  // mochaテストを実行
+  return new Promise<void>((resolve, reject) => {
+    const runner = mocha.run((failures: number) => {
+      if (failures > 0) {
+        reject(new Error(`${failures} tests failed.`));
+      } else {
+        resolve();
+      }
+    });
+
+    // タイムアウト対策: 30秒でテストを強制終了
+    const timeout = setTimeout(() => {
+      runner.abort();
+      resolve();
+    }, 30000);
+
+    runner.on('end', () => {
+      clearTimeout(timeout);
+    });
+  });
 }

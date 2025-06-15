@@ -1,6 +1,14 @@
-import * as assert from 'node:assert';
+// biome-ignore lint/style/noNamespaceImport: テストで必要
+// biome-ignore lint/correctness/noNodejsModules: テストで必要
+import * as assert from 'node:assert/strict';
+// biome-ignore lint/correctness/noNodejsModules: テストで必要
 import { type ChildProcess, spawn } from 'node:child_process';
+// biome-ignore lint/style/noNamespaceImport: テストで必要
+// biome-ignore lint/correctness/noNodejsModules: テストで必要
 import * as path from 'node:path';
+
+// モジュールレベルの定数
+const CONTENT_LENGTH_REGEX = /Content-Length: (\d+)\r\n\r\n/;
 
 interface JsonRpcRequest {
   jsonrpc: '2.0';
@@ -37,6 +45,34 @@ describe('Document Synchronization Test Suite', () => {
     lspServer.stdin?.write(header + message);
   }
 
+  // バッファからメッセージを抽出
+  function extractMessage(buffer: string): { message: string | null; remainingBuffer: string } {
+    const match = buffer.match(CONTENT_LENGTH_REGEX);
+    if (!match) {
+      return { message: null, remainingBuffer: buffer };
+    }
+
+    const contentLength = Number.parseInt(match[1]);
+    const messageStart = match[0].length;
+
+    if (buffer.length < messageStart + contentLength) {
+      return { message: null, remainingBuffer: buffer };
+    }
+
+    const message = buffer.substring(messageStart, messageStart + contentLength);
+    const remainingBuffer = buffer.substring(messageStart + contentLength);
+    return { message, remainingBuffer };
+  }
+
+  // JSONレスポンスをパース
+  function parseJsonRpcResponse(response: string): JsonRpcResponse | null {
+    try {
+      return JSON.parse(response) as JsonRpcResponse;
+    } catch {
+      return null;
+    }
+  }
+
   function sendRequest(method: string, params: unknown): Promise<JsonRpcResponse> {
     return new Promise((resolve, reject) => {
       const request: JsonRpcRequest = {
@@ -56,24 +92,17 @@ describe('Document Synchronization Test Suite', () => {
       const responseHandler = (data: Buffer) => {
         buffer += data.toString();
 
-        const match = buffer.match(/Content-Length: (\d+)\r\n\r\n/);
-        if (match) {
-          const contentLength = Number.parseInt(match[1]);
-          const messageStart = match[0].length;
+        const { message: extractedMessage, remainingBuffer } = extractMessage(buffer);
+        if (extractedMessage) {
+          buffer = remainingBuffer;
+          const json = parseJsonRpcResponse(extractedMessage);
 
-          if (buffer.length >= messageStart + contentLength) {
-            const response = buffer.substring(messageStart, messageStart + contentLength);
-            buffer = buffer.substring(messageStart + contentLength);
-
-            try {
-              const json = JSON.parse(response) as JsonRpcResponse;
-              if (json.id === currentId) {
-                lspServer.stdout?.off('data', responseHandler);
-                resolve(json);
-              }
-            } catch (e) {
-              reject(e);
-            }
+          if (json && json.id === currentId) {
+            lspServer.stdout?.off('data', responseHandler);
+            resolve(json);
+          } else if (!json) {
+            lspServer.stdout?.off('data', responseHandler);
+            reject(new Error('Failed to parse JSON response'));
           }
         }
       };

@@ -1,6 +1,10 @@
-import * as assert from 'node:assert';
+// biome-ignore lint/style/noNamespaceImport: テストで必要
+// biome-ignore lint/correctness/noNodejsModules: テストで必要
+import * as assert from 'node:assert/strict';
+// biome-ignore lint/style/noNamespaceImport: VSCode APIを使用
+// biome-ignore lint/correctness/noUndeclaredDependencies: VSCodeが提供
 import * as vscode from 'vscode';
-import { closeDoc, getDiagnostics, getLanguageClient, openDoc } from '../test-utils/lsp';
+import { closeDoc, getLanguageClient, openDoc } from '../test-utils/lsp.ts';
 
 // 診断を待つラッパー関数
 async function waitForDiagnostics(doc: vscode.TextDocument): Promise<vscode.Diagnostic[]> {
@@ -12,14 +16,11 @@ async function waitForDiagnostics(doc: vscode.TextDocument): Promise<vscode.Diag
   while (totalWaitTime < maxWaitTime) {
     const diagnostics = vscode.languages.getDiagnostics(doc.uri);
     if (diagnostics.length > 0) {
-      console.log(`診断を取得しました: ${diagnostics.length}件`);
       return diagnostics;
     }
     await new Promise((resolve) => setTimeout(resolve, checkInterval));
     totalWaitTime += checkInterval;
   }
-
-  console.log('診断が取得できませんでした');
   return [];
 }
 
@@ -35,19 +36,16 @@ describe('診断機能のテスト', () => {
   it('固定メッセージ「Hello from Groovy LSP」が表示される (issue #5)', async () => {
     // 拡張機能が正しくアクティベートされているか確認
     const extension = vscode.extensions.getExtension('groovy-lsp.groovy-lsp');
-    console.log('拡張機能:', extension ? '存在' : '存在しない');
 
     if (extension && !extension.isActive) {
-      console.log('拡張機能をアクティベート中...');
       await extension.activate();
     }
 
     // LSPクライアントの確認
     const client = await getLanguageClient();
-    console.log('LSPクライアント:', client ? '初期化済み' : '未初期化');
 
     if (client) {
-      console.log('LSPクライアント状態:', await client.state);
+      // クライアントが利用可能であることを確認
     }
 
     const code = `
@@ -59,7 +57,6 @@ describe('診断機能のテスト', () => {
     `;
 
     doc = await openDoc(code, 'groovy');
-    console.log('ドキュメントを開きました:', doc.uri.toString());
 
     // 少し待機してからテスト
     await new Promise((resolve) => setTimeout(resolve, 2000));

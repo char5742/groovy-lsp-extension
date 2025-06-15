@@ -1,8 +1,15 @@
-import * as assert from 'node:assert';
+// biome-ignore lint/style/noNamespaceImport: テスト環境では標準的な書き方
+// biome-ignore lint/correctness/noNodejsModules: テスト環境ではNode.jsモジュールが必要
+import * as assert from 'node:assert/strict';
+// biome-ignore lint/style/noNamespaceImport: テスト環境では標準的な書き方
+// biome-ignore lint/correctness/noNodejsModules: テスト環境ではNode.jsモジュールが必要
 import * as path from 'node:path';
+// biome-ignore lint/style/noNamespaceImport: VSCode APIは名前空間での使用が推奨
+// biome-ignore lint/correctness/noUndeclaredDependencies: vscodeは実行時に提供される
 import * as vscode from 'vscode';
 
 describe('Groovyファイル判定の統合テスト', () => {
+  // biome-ignore lint/suspicious/noExplicitAny: 拡張機能のexportsの型は動的
   let extension: vscode.Extension<any> | undefined;
 
   beforeEach(async () => {

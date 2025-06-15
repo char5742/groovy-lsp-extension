@@ -1,6 +1,10 @@
-import * as assert from 'node:assert';
+// biome-ignore lint/style/noNamespaceImport: テストで必要
+// biome-ignore lint/correctness/noNodejsModules: テストで必要
+import * as assert from 'node:assert/strict';
+// biome-ignore lint/style/noNamespaceImport: VSCode APIを使用
+// biome-ignore lint/correctness/noUndeclaredDependencies: VSCodeが提供
 import * as vscode from 'vscode';
-import { getLanguageClient } from '../test-utils/lsp';
+import { getLanguageClient } from '../test-utils/lsp.ts';
 
 describe('コマンド機能のテスト', () => {
   it('拡張機能が正しくアクティベートされる', async () => {
@@ -34,7 +38,7 @@ describe('コマンド機能のテスト', () => {
     }
   });
 
-  it('設定が正しく読み込まれる', async () => {
+  it('設定が正しく読み込まれる', () => {
     const config = vscode.workspace.getConfiguration('groovy-lsp');
     const traceLevel = config.get<string>('trace.server');
 

@@ -28,6 +28,7 @@
     "formatter": {
       "quoteStyle": "single",
       "semicolons": "always"
-    }
+    },
+    "globals": ["describe", "it", "before", "after", "beforeEach", "afterEach"]
   }
 }
