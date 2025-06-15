@@ -82,7 +82,7 @@ vscode-extension/
 ## 重要な設計方針
 
 1. **Vavrの使用**: 全てのエラーハンドリングはEitherモナドで実装（例外スローは禁止）
-2. **JSpecify**: 各パッケージに`package-info.java`を配置し`@NullMarked`を宣言
+2. **JSpecify**: ルートレベルで`@NullMarked`を宣言（デフォルトnon-null）
 3. **テスト分類**: `@FastTest`（<100ms）、`@SlowTest`（>100ms）、`@IntegrationTest`を使用
 4. **非同期処理**: TypeScriptではPromise/async-awaitのみ使用（コールバック禁止）
 

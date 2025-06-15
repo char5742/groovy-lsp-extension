@@ -51,13 +51,7 @@ NullAwayの設定で`@NullMarked`スコープのみをチェック対象とす�
 ## 実装ガイドライン
 
 ### 1. パッケージ構成
-各パッケージに`package-info.java`を作成：
-```java
-@NullMarked
-package com.groovylsp.domain.model;
-
-import org.jspecify.annotations.NullMarked;
-```
+ルートレベルで`@NullMarked`を宣言することで、プロジェクト全体がデフォルトnon-nullとなります。個別のパッケージでの宣言は不要です。
 
 ### 2. 型パラメータ
 ```java
