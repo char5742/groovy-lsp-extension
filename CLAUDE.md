@@ -6,13 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Groovy LSP ExtensionはGroovy言語のLanguage Server Protocol (LSP)実装で、特にSpockテストフレームワークのサポートに重点を置いています。モノレポ構成でLSPコア（Java）とVSCode拡張機能（TypeScript）を含みます。
 
-**重要**: 現在このプロジェクトは計画・ドキュメント段階で、実装コードはまだ存在しません。
 
 ## アーキテクチャ
 
 ### LSPコア（Java）
 - **アーキテクチャ**: オニオンアーキテクチャ（domain → application → infrastructure → presentation）
-- **言語**: Java 23+
+- **言語**: Java 23+（プレビュー機能有効）
 - **関数型プログラミング**: Vavrライブラリ使用（Eitherモナドでエラーハンドリング、try-catch禁止）
 - **Null安全性**: JSpecify使用（@NullMarkedでデフォルトnon-null）
 - **DI**: Daggerによるコンパイルタイム依存性注入
@@ -20,6 +19,8 @@ Groovy LSP ExtensionはGroovy言語のLanguage Server Protocol (LSP)実装で、
 ### VSCode拡張機能（TypeScript）
 - **言語**: TypeScript（strictモード有効）
 - **非同期処理**: async/awaitパターンを使用（コールバック禁止）
+- **ビルドツール**: esbuild
+- **リンター/フォーマッター**: Biome
 
 ## ビルド・テストコマンド
 
@@ -28,9 +29,11 @@ Groovy LSP ExtensionはGroovy言語のLanguage Server Protocol (LSP)実装で、
 cd lsp-core
 ./gradlew build              # ビルド（Error Prone自動修正含む）
 ./gradlew test               # テスト実行
+./gradlew test --tests "TestClassName.testMethodName"  # 単一テスト実行
 ./gradlew jacocoTestReport   # カバレッジレポート生成
 ./gradlew check              # 全静的解析実行
 ./gradlew spotlessApply      # コード自動フォーマット
+./gradlew shadowJar          # 実行可能JARビルド
 ```
 
 ### VSCode拡張機能
@@ -39,6 +42,7 @@ cd vscode-extension
 npm install                  # 依存関係インストール
 npm run compile              # TypeScriptビルド
 npm run test                 # テスト実行（統合テスト）
+npm run test -- --grep "test name"  # 単一テスト実行
 npm run coverage             # カバレッジレポート生成
 npm run lint                 # Biomeチェック実行
 npm run lint:fix             # Biome自動修正
@@ -89,10 +93,8 @@ vscode-extension/
 ## コーディングガイドライン
 
 - **警告抑制**: @SuppressWarningsは極力使用しないでください
-
-## 追加ガイドライン
-
-- セットアップ用のスクリプトは要求されたときのみ作成してください
+- **Gitフック**: Lefthookによる自動チェック（--no-verify禁止）
+- **静的解析エラー**: Error ProneとNullAwayのエラーは必ず修正
 
 ## ツール関連
 
