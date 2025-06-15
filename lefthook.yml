@@ -87,7 +87,7 @@ pre-push:
     typescript-tests:
       tags: [test, typescript]
       root: "vscode-extension/"
-      run: bun run test
+      run: bun run test:integration
       fail_text: |
         TypeScriptテストが失敗しました。すべてのテストが成功してからプッシュしてください。
         'bun test' を実行して失敗したテストを確認
