@@ -1,30 +1,30 @@
 # Groovy Language Server
 
-Minimal Language Server Protocol (LSP) implementation for Groovy.
+Groovy用の最小限のLanguage Server Protocol (LSP)実装。
 
-## Requirements
+## 必要要件
 
-- Java 23 or higher
+- Java 23以上
 
-## Build
+## ビルド
 
 ```bash
 ./gradlew build
 ```
 
-## Run
+## 実行
 
-To start the LSP server in standard I/O mode:
+標準I/OモードでLSPサーバーを起動するには:
 
 ```bash
 ./gradlew run
 ```
 
-The server communicates via JSON-RPC over standard input/output streams.
+サーバーは標準入出力ストリームを介してJSON-RPCで通信します。
 
-## Test JSON-RPC Communication
+## JSON-RPC通信のテスト
 
-You can test the server by sending JSON-RPC messages to stdin. Example initialization request:
+標準入力にJSON-RPCメッセージを送信してサーバーをテストできます。初期化リクエストの例:
 
 ```json
 {
@@ -39,4 +39,4 @@ You can test the server by sending JSON-RPC messages to stdin. Example initializ
 }
 ```
 
-The server will respond with its capabilities on stdout.
+サーバーは標準出力に機能情報を返します。
