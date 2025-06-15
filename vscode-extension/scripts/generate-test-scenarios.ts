@@ -1,5 +1,10 @@
+// biome-ignore lint/style/noNamespaceImport: スクリプトファイルでは標準的な書き方
+// biome-ignore lint/correctness/noNodejsModules: Node.jsスクリプト
 import * as fs from 'node:fs';
+// biome-ignore lint/style/noNamespaceImport: スクリプトファイルでは標準的な書き方
+// biome-ignore lint/correctness/noNodejsModules: Node.jsスクリプト
 import * as path from 'node:path';
+// biome-ignore lint/style/noNamespaceImport: TypeScript APIは名前空間での使用が一般的
 import * as ts from 'typescript';
 
 interface TestScenario {
@@ -20,6 +25,7 @@ class TestScenarioExtractor {
     const category = this.categorizeTest(filePath);
     let currentSuite = '';
 
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: AST走査の特性上、複雑度が高くなる
     const visit = (node: ts.Node) => {
       // suite() or describe() calls
       if (
@@ -59,8 +65,12 @@ class TestScenarioExtractor {
   }
 
   private categorizeTest(filePath: string): 'unit' | 'integration' | 'e2e' {
-    if (filePath.includes('/integration/')) return 'integration';
-    if (filePath.includes('/e2e/')) return 'e2e';
+    if (filePath.includes('/integration/')) {
+      return 'integration';
+    }
+    if (filePath.includes('/e2e/')) {
+      return 'e2e';
+    }
     return 'unit';
   }
 
@@ -70,6 +80,7 @@ class TestScenarioExtractor {
     return matches ? matches.map((tag) => tag.substring(1)) : [];
   }
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: レポート生成の特性上、複雑度が高くなる
   generateMarkdown(): string {
     let markdown = '# テストシナリオ一覧\n\n';
 
@@ -97,7 +108,9 @@ class TestScenarioExtractor {
 
     for (const category of categories) {
       const categoryScenarios = this.scenarios.filter((s) => s.category === category);
-      if (categoryScenarios.length === 0) continue;
+      if (categoryScenarios.length === 0) {
+        continue;
+      }
 
       markdown += `## ${categoryNames[category]}\n\n`;
 
@@ -130,7 +143,7 @@ class TestScenarioExtractor {
     return markdown;
   }
 
-  generateJSON(): string {
+  generateJson(): string {
     return JSON.stringify(
       {
         stats: {
@@ -172,9 +185,11 @@ async function main() {
   }
 
   const testFiles = findTestFiles(testRoot);
+  // biome-ignore lint/suspicious/noConsole lint/suspicious/noConsoleLog: 開発スクリプトの進捗表示
   console.log(`Found ${testFiles.length} test files`);
 
   for (const file of testFiles) {
+    // biome-ignore lint/suspicious/noConsole lint/suspicious/noConsoleLog: 開発スクリプトの進捗表示
     console.log(`Extracting from: ${file}`);
     extractor.extractFromFile(file);
   }
@@ -185,11 +200,13 @@ async function main() {
   // Markdown出力
   const markdown = extractor.generateMarkdown();
   fs.writeFileSync(path.join(outputDir, 'SCENARIOS.md'), markdown);
+  // biome-ignore lint/suspicious/noConsole lint/suspicious/noConsoleLog: 開発スクリプトの進捗表示
   console.log('Generated: src/test/SCENARIOS.md');
 
   // JSON出力
-  const json = extractor.generateJSON();
+  const json = extractor.generateJson();
   fs.writeFileSync(path.join(outputDir, 'scenarios.json'), json);
+  // biome-ignore lint/suspicious/noConsole lint/suspicious/noConsoleLog: 開発スクリプトの進捗表示
   console.log('Generated: src/test/scenarios.json');
 }
 
