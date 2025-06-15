@@ -28,18 +28,6 @@ pre-commit:
       fail_text: |
         Error Proneがコードの問題を検出しました。出力を確認して問題を修正してください。
     
-    biome-format:
-      tags: [formatting, typescript]
-      root: "vscode-extension/"
-      glob: "*.{js,ts,jsx,tsx,json}"
-      run: npx biome format --write {staged_files}
-      stage_fixed: true
-      skip:
-        - merge
-        - rebase
-      fail_text: |
-        Biomeフォーマットエラーが検出されました。自動修正を試みています。
-    
     biome-lint:
       tags: [linting, typescript]
       root: "vscode-extension/"
