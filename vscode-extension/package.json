@@ -16,7 +16,7 @@
       {
         "id": "groovy",
         "aliases": ["Groovy", "groovy"],
-        "extensions": [".groovy", ".gradle", ".gvy", ".gy", ".gsh"],
+        "extensions": [".groovy", ".gradle", ".gradle.kts", ".gvy", ".gy", ".gsh"],
         "configuration": "./language-configuration.json"
       }
     ],
