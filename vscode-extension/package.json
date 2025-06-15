@@ -40,15 +40,23 @@
     "lint": "biome check ./src",
     "lint:fix": "biome check --write ./src",
     "format": "biome format --write ./src",
+    "pretest": "npm run compile && npm run lint",
     "test": "node ./out/test/runTest.js",
-    "coverage": "nyc npm test"
+    "test:unit": "npm run pretest && node ./out/test/runTest.js",
+    "test:integration": "npm run pretest && VSCODE_TEST_SUITE=integration node ./out/test/runTest.js",
+    "test:scenarios": "ts-node scripts/generate-test-scenarios.ts"
   },
   "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^24.0.1",
     "@types/vscode": "^1.101.0",
+    "@vscode/test-electron": "^2.4.1",
     "esbuild": "^0.25.5",
+    "glob": "^11.0.0",
+    "mocha": "^10.8.2",
     "typescript": "^5.8.3"
   },
   "dependencies": {

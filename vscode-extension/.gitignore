@@ -11,11 +11,6 @@ node_modules/
 
 # Test files
 *.log
-test.groovy
-
-# Test scripts (development only)
-test-extension.js
-test-lsp-connection.js
 
 # OS files
 .DS_Store
