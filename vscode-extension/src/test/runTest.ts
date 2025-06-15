@@ -28,8 +28,14 @@ async function main() {
       options.launchArgs.push('--disable-gpu');
     }
 
+    // タイムアウト付きでテストを実行
+    const testPromise = runTests(options);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Test execution timeout after 45 seconds')), 45000);
+    });
+
     // VS Codeをダウンロードし、解凍して統合テストを実行
-    await runTests(options);
+    await Promise.race([testPromise, timeoutPromise]);
   } catch (err) {
     console.error('Failed to run tests:', err);
     process.exit(1);
