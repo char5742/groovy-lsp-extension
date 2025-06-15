@@ -89,8 +89,10 @@ pre-push:
       root: "vscode-extension/"
       run: |
         if command -v xvfb-run >/dev/null 2>&1 && [ -z "$DISPLAY" ]; then
-          timeout 60 xvfb-run -a npm test
+          echo "Running tests with xvfb-run..."
+          timeout 60 xvfb-run -a npm test 2>&1
         else
+          echo "Running tests normally (DISPLAY=$DISPLAY)..."
           npm test
         fi
       fail_text: |

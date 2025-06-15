@@ -25,6 +25,18 @@ suite('Document Synchronization Test Suite', () => {
   let messageId = 1;
   let buffer = '';
 
+  function sendNotification(method: string, params: unknown): void {
+    const notification = {
+      jsonrpc: '2.0',
+      method: method,
+      params: params,
+    };
+
+    const message = JSON.stringify(notification);
+    const header = `Content-Length: ${Buffer.byteLength(message)}\r\n\r\n`;
+    lspServer.stdin?.write(header + message);
+  }
+
   function sendRequest(method: string, params: unknown): Promise<JsonRpcResponse> {
     return new Promise((resolve, reject) => {
       const request: JsonRpcRequest = {
@@ -98,8 +110,7 @@ suite('Document Synchronization Test Suite', () => {
     lspServer.kill();
   });
 
-  // TODO: LSPサーバーのJARファイルがビルドされたら有効化する
-  test.skip('Should handle document synchronization', async () => {
+  test('Should handle document synchronization', async () => {
     // 初期化
     const initResult = await sendRequest('initialize', {
       processId: process.pid,
@@ -122,10 +133,10 @@ suite('Document Synchronization Test Suite', () => {
     assert.strictEqual(capabilities.capabilities.textDocumentSync, 1);
 
     // initialized通知を送信
-    await sendRequest('initialized', {});
+    sendNotification('initialized', {});
 
     // ドキュメントを開く
-    await sendRequest('textDocument/didOpen', {
+    sendNotification('textDocument/didOpen', {
       textDocument: {
         uri: 'file:///test/example.groovy',
         languageId: 'groovy',
@@ -134,8 +145,11 @@ suite('Document Synchronization Test Suite', () => {
       },
     });
 
+    // 少し待機（サーバーが処理する時間を与える）
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     // ドキュメントを変更
-    await sendRequest('textDocument/didChange', {
+    sendNotification('textDocument/didChange', {
       textDocument: {
         uri: 'file:///test/example.groovy',
         version: 2,
@@ -147,12 +161,18 @@ suite('Document Synchronization Test Suite', () => {
       ],
     });
 
+    // 少し待機
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     // ドキュメントを閉じる
-    await sendRequest('textDocument/didClose', {
+    sendNotification('textDocument/didClose', {
       textDocument: {
         uri: 'file:///test/example.groovy',
       },
     });
+
+    // 少し待機
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // すべてのリクエストが正常に完了
     assert.ok(true);
