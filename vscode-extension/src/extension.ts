@@ -13,7 +13,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const outputChannel = vscode.window.createOutputChannel('Groovy Language Server');
   outputChannel.appendLine('Groovy Language Server extension is activating...');
 
-  // Path to the LSP server JAR file
+  // LSPサーバーJARファイルのパス
   const serverJar = path.join(
     context.extensionPath,
     '..',
@@ -23,7 +23,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     'groovy-lsp-server-0.0.1-SNAPSHOT-all.jar',
   );
 
-  // Server options
+  // サーバーオプション
   const serverOptions: ServerOptions = {
     run: {
       command: 'java',
@@ -37,7 +37,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
   };
 
-  // Client options
+  // クライアントオプション
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: 'file', language: 'groovy' }],
     synchronize: {
@@ -48,15 +48,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     traceOutputChannel: outputChannel,
   };
 
-  // Create the language client
+  // Language Clientを作成
   client = new LanguageClient('groovy-lsp', 'Groovy Language Server', serverOptions, clientOptions);
 
-  // Log client events for debugging
+  // デバッグ用にクライアントイベントをログ
   client.onDidChangeState((event) => {
     outputChannel.appendLine(`Language client state changed: ${event.oldState} -> ${event.newState}`);
   });
 
-  // Start the client and the server
+  // クライアントとサーバーを起動
   try {
     await client.start();
     outputChannel.appendLine('Groovy Language Server started successfully');

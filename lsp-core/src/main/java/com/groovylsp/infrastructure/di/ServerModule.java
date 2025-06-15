@@ -9,7 +9,7 @@ import dagger.Module;
 import dagger.Provides;
 import javax.inject.Singleton;
 
-/** Dagger module for providing server dependencies. */
+/** サーバーの依存関係を提供するDaggerモジュール。 */
 @Module
 public class ServerModule {
 

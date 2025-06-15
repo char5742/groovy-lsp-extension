@@ -1,9 +1,9 @@
-# Configuration Directory
+# 設定ディレクトリ
 
-This directory contains configuration files for various code quality tools:
+このディレクトリには、様々なコード品質ツールの設定ファイルが含まれます:
 
-- `checkstyle/` - Checkstyle configuration
-- `spotless/` - Spotless formatting configuration
-- `errorprone/` - Error Prone static analysis configuration
+- `checkstyle/` - Checkstyle設定
+- `spotless/` - Spotlessフォーマット設定
+- `errorprone/` - Error Prone静的解析設定
 
-These subdirectories will be populated as the respective tools are configured.
+これらのサブディレクトリは、それぞれのツールが設定されるとファイルが配置されます。

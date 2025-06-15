@@ -27,10 +27,11 @@ public class InMemoryTextDocumentRepository implements TextDocumentRepository {
       // 古いバージョンは無視してエラーを返す
       return Either.left(
           new DocumentError.InvalidDocument(
-              "Version conflict: existing version "
+              "バージョン競合: 既存バージョン "
                   + previous.version()
-                  + " is newer than or equal to provided version "
-                  + document.version()));
+                  + " は提供されたバージョン "
+                  + document.version()
+                  + " より新しいか同じです"));
     }
 
     documents.put(document.uri(), document);
@@ -57,8 +58,7 @@ public class InMemoryTextDocumentRepository implements TextDocumentRepository {
   }
 
   /**
-   * Clears all documents from the repository. WARNING: This method should only be used for testing
-   * purposes. In production, documents should be removed individually using the remove() method.
+   * リポジトリからすべてのドキュメントをクリア。警告: このメソッドはテスト目的でのみ使用してください。 本番環境では、remove()メソッドを使用してドキュメントを個別に削除してください。
    */
   @Override
   public void clear() {

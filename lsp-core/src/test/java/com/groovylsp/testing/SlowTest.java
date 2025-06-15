@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import org.junit.jupiter.api.Tag;
 
-/** Marks a test as a slow test (execution time > 100ms). */
+/** 低速テストとしてマーク（実行時間 > 100ms）。 */
 @Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @Tag("slow")

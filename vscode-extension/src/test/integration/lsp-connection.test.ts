@@ -26,12 +26,12 @@ suite('LSP Connection Test Suite', () => {
       'groovy-lsp-server-0.0.1-SNAPSHOT-all.jar',
     );
 
-    // Start LSP server
+    // LSPサーバーを起動
     const lspServer = spawn('java', ['-jar', jarPath], {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    // Send initialize request
+    // initializeリクエストを送信
     const initializeRequest = {
       jsonrpc: '2.0',
       id: 1,
@@ -49,12 +49,12 @@ suite('LSP Connection Test Suite', () => {
 
     lspServer.stdin.write(header + message);
 
-    // Handle server output
+    // サーバー出力を処理
     let buffer = '';
     lspServer.stdout.on('data', (data) => {
       buffer += data.toString();
 
-      // Try to parse response
+      // レスポンスのパースを試行
       const match = buffer.match(/Content-Length: (\d+)\r\n\r\n/);
       if (match) {
         const contentLength = Number.parseInt(match[1]);
@@ -77,7 +77,7 @@ suite('LSP Connection Test Suite', () => {
       }
     });
 
-    // Timeout after 5 seconds
+    // 5秒後にタイムアウト
     setTimeout(() => {
       lspServer.kill();
       done(new Error('Timeout: No response from LSP server'));

@@ -3,7 +3,7 @@ import Mocha = require('mocha');
 import * as path from 'node:path';
 
 export async function run(): Promise<void> {
-  // Create the mocha test
+  // mochaテストを作成
   const mocha = new Mocha({
     ui: 'tdd',
     color: true,
@@ -13,15 +13,15 @@ export async function run(): Promise<void> {
   const testsRoot = path.resolve(__dirname, '..');
 
   try {
-    // Find all test files
+    // すべてのテストファイルを検索
     const files = await glob('**/**.test.js', { cwd: testsRoot });
 
-    // Add files to the test suite
+    // テストスイートにファイルを追加
     for (const f of files) {
       mocha.addFile(path.resolve(testsRoot, f));
     }
 
-    // Run the mocha test
+    // mochaテストを実行
     return new Promise<void>((resolve, reject) => {
       mocha.run((failures: number) => {
         if (failures > 0) {

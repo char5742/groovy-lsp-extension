@@ -73,14 +73,14 @@ public class TextDocumentSyncUseCase {
     var result = content;
     for (var change : changes) {
       if (change.getRange() == null) {
-        // Full document sync
+        // フルドキュメント同期
         result = change.getText();
       } else {
-        // TODO: Implement incremental sync support
-        // This will require calculating offsets from the range (line/character)
-        // and applying the text changes at the correct positions.
-        // For now, we only support full document sync.
-        throw new UnsupportedOperationException("Incremental sync not yet supported");
+        // TODO: インクリメンタル同期のサポートを実装
+        // これには、範囲（行/文字）からオフセットを計算し、
+        // 正しい位置にテキスト変更を適用する必要がある。
+        // 現在はフルドキュメント同期のみサポート。
+        throw new UnsupportedOperationException("インクリメンタル同期はまだサポートされていません");
       }
     }
     return result;
