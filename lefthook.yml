@@ -27,8 +27,6 @@ pre-commit:
         - rebase
       fail_text: |
         Error Proneがコードの問題を検出しました。出力を確認して問題を修正してください。
-        './gradlew errorpronePatch' で修正パッチを生成してレビュー
-        または './gradlew errorproneApply' で自動修正を適用
 
 pre-push:
   parallel: false
