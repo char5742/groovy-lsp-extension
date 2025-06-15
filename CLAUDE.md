@@ -38,7 +38,7 @@ cd lsp-core
 cd vscode-extension
 bun install                  # 依存関係インストール
 bun run compile              # TypeScriptビルド
-bun test                     # テスト実行
+bun run test                 # テスト実行（統合テスト）
 bun run coverage             # カバレッジレポート生成
 bun run lint                 # Biomeチェック実行
 bun run lint:fix             # Biome自動修正

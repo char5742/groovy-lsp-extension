@@ -55,8 +55,7 @@ Groovyファイルを開くと、拡張機能が自動的にLSPサーバーを�
 - `bun run watch` - 変更を監視して再コンパイル
 - `bun run lint` - Biomeの実行
 - `bun run lint:fix` - Biomeの自動修正付き実行
-- `bun test` - テストの実行
-- `bun run test:int` - 統合テストの実行
+- `bun run test` - 統合テストの実行
 
 ### 設定
 

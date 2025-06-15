@@ -24,14 +24,14 @@ test/
 ## テストの実行方法
 
 ```bash
-# すべてのテストを実行
-bun test
+# すべてのテストを実行（統合テスト）
+bun run test
 
 # 単体テストのみ実行
-bun run test:unit
+bun test src/test/unit
 
-# 統合テストのみ実行
-bun run test:integration
+# シナリオ一覧を更新
+bun run test:scenarios
 ```
 
 ## テストカテゴリ
