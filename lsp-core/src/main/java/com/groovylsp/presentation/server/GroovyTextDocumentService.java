@@ -4,6 +4,7 @@ import com.groovylsp.application.usecase.DiagnosticUseCase;
 import com.groovylsp.application.usecase.TextDocumentSyncUseCase;
 import com.groovylsp.domain.model.DiagnosticItem;
 import com.groovylsp.domain.model.DiagnosticResult;
+import com.groovylsp.domain.util.FileTypeUtil;
 import java.util.ArrayList;
 import java.util.List;
 import javax.inject.Inject;
@@ -99,6 +100,15 @@ public class GroovyTextDocumentService implements TextDocumentService, LanguageC
     var currentClient = client;
     if (currentClient == null) {
       logger.warn("Language client not connected, skipping diagnostics");
+      return;
+    }
+
+    // Groovyファイルでない場合は診断をスキップ
+    if (!FileTypeUtil.isGroovyFile(document.uri())) {
+      logger.debug("Skipping diagnostics for non-Groovy file: {}", document.uri());
+      // 診断結果をクリア（既存の診断があれば削除）
+      var params = new PublishDiagnosticsParams(document.uri().toString(), List.of());
+      currentClient.publishDiagnostics(params);
       return;
     }
 

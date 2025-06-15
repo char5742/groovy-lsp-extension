@@ -1,6 +1,8 @@
 package com.groovylsp.presentation.server;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -15,6 +17,7 @@ import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
+import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
@@ -140,5 +143,78 @@ class GroovyTextDocumentServiceTest {
     var params = new DidSaveTextDocumentParams(identifier);
 
     service.didSave(params);
+  }
+
+  @Test
+  void shouldSkipDiagnosticsForNonGroovyFiles() {
+    var uri = "file:///test.java";
+    var textDocument = new TextDocumentItem(uri, "java", 1, "public class Test {}");
+    var params = new DidOpenTextDocumentParams(textDocument);
+    var document = new TextDocument(URI.create(uri), "java", 1, "public class Test {}");
+
+    when(syncUseCase.openDocument(params)).thenReturn(Either.right(document));
+
+    service.didOpen(params);
+
+    verify(syncUseCase).openDocument(params);
+    verify(diagnosticUseCase, never()).diagnose(any());
+    verify(client).publishDiagnostics(any(PublishDiagnosticsParams.class));
+  }
+
+  @Test
+  void shouldRunDiagnosticsForGroovyFiles() {
+    var uri = "file:///test.groovy";
+    var textDocument = new TextDocumentItem(uri, "groovy", 1, "class Test {}");
+    var params = new DidOpenTextDocumentParams(textDocument);
+    var document = new TextDocument(URI.create(uri), "groovy", 1, "class Test {}");
+
+    when(syncUseCase.openDocument(params)).thenReturn(Either.right(document));
+    when(diagnosticUseCase.diagnose(document))
+        .thenReturn(
+            Either.right(com.groovylsp.domain.model.DiagnosticResult.empty(URI.create(uri))));
+
+    service.didOpen(params);
+
+    verify(syncUseCase).openDocument(params);
+    verify(diagnosticUseCase).diagnose(document);
+    verify(client).publishDiagnostics(any(PublishDiagnosticsParams.class));
+  }
+
+  @Test
+  void shouldRunDiagnosticsForGradleFiles() {
+    var uri = "file:///build.gradle";
+    var textDocument = new TextDocumentItem(uri, "groovy", 1, "apply plugin: 'java'");
+    var params = new DidOpenTextDocumentParams(textDocument);
+    var document = new TextDocument(URI.create(uri), "groovy", 1, "apply plugin: 'java'");
+
+    when(syncUseCase.openDocument(params)).thenReturn(Either.right(document));
+    when(diagnosticUseCase.diagnose(document))
+        .thenReturn(
+            Either.right(com.groovylsp.domain.model.DiagnosticResult.empty(URI.create(uri))));
+
+    service.didOpen(params);
+
+    verify(syncUseCase).openDocument(params);
+    verify(diagnosticUseCase).diagnose(document);
+    verify(client).publishDiagnostics(any(PublishDiagnosticsParams.class));
+  }
+
+  @Test
+  void shouldRunDiagnosticsForGradleKtsFiles() {
+    var uri = "file:///settings.gradle.kts";
+    var textDocument = new TextDocumentItem(uri, "kotlin", 1, "rootProject.name = \"test\"");
+    var params = new DidOpenTextDocumentParams(textDocument);
+    var document = new TextDocument(URI.create(uri), "kotlin", 1, "rootProject.name = \"test\"");
+
+    when(syncUseCase.openDocument(params)).thenReturn(Either.right(document));
+    when(diagnosticUseCase.diagnose(document))
+        .thenReturn(
+            Either.right(com.groovylsp.domain.model.DiagnosticResult.empty(URI.create(uri))));
+
+    service.didOpen(params);
+
+    verify(syncUseCase).openDocument(params);
+    verify(diagnosticUseCase).diagnose(document);
+    verify(client).publishDiagnostics(any(PublishDiagnosticsParams.class));
   }
 }
