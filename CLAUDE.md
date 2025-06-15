@@ -26,7 +26,7 @@ Groovy LSP ExtensionはGroovy言語のLanguage Server Protocol (LSP)実装で、
 ### Java LSPコア
 ```bash
 cd lsp-core
-./gradlew build              # ビルド
+./gradlew build              # ビルド（Error Prone自動修正含む）
 ./gradlew test               # テスト実行
 ./gradlew jacocoTestReport   # カバレッジレポート生成
 ./gradlew check              # 全静的解析実行
@@ -84,3 +84,11 @@ vscode-extension/
 2. **JSpecify**: 各パッケージに`package-info.java`を配置し`@NullMarked`を宣言
 3. **テスト分類**: `@FastTest`（<100ms）、`@SlowTest`（>100ms）、`@IntegrationTest`を使用
 4. **非同期処理**: TypeScriptではPromise/async-awaitのみ使用（コールバック禁止）
+
+## コーディングガイドライン
+
+- **警告抑制**: @SuppressWarningsは極力使用しないでください
+
+## 追加ガイドライン
+
+- セットアップ用のスクリプトは要求されたときのみ作成してください

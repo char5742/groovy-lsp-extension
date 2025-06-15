@@ -17,7 +17,7 @@ import org.jspecify.annotations.Nullable;
 @Singleton
 public class GroovyLanguageServer implements LanguageServer, LanguageClientAware {
 
-  @Nullable private LanguageClient client;
+  private @Nullable LanguageClient client;
 
   private final GroovyTextDocumentService textDocumentService;
   private final GroovyWorkspaceService workspaceService;
@@ -65,5 +65,9 @@ public class GroovyLanguageServer implements LanguageServer, LanguageClientAware
   public void connect(LanguageClient client) {
     this.client = client;
     this.textDocumentService.connect(client);
+  }
+
+  public @Nullable LanguageClient getClient() {
+    return client;
   }
 }

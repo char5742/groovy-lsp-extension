@@ -20,3 +20,7 @@ test-lsp/
 
 # Logs
 *.log
+
+# Lefthook
+.lefthook/
+.lefthook-local.yml

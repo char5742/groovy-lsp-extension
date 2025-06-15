@@ -1,0 +1,116 @@
+// Error Prone静的解析設定
+
+tasks.withType(JavaCompile).configureEach {
+    options.errorprone {
+        allErrorsAsWarnings.set(false)
+        disableWarningsInGeneratedCode.set(true)
+        errorproneArgs.add("-XepExcludedPaths:.*/build/generated/.*")
+        
+        // 自動修正を常に適用（可能な限りすべてのサポートされているチェックを有効化）
+        errorproneArgs.add("-XepPatchChecks:" + String.join(",", [
+            // 基本的な修正
+            "MissingOverride",
+            "DefaultCharset", 
+            "UnusedVariable",
+            "DeadException",
+            "UnnecessaryParentheses",
+            "RedundantThrows",
+            "RemoveUnusedImports",
+            "WildcardImport",
+            "BadImport",
+            
+            // 等価性・比較関連
+            "ReferenceEquality",
+            "EqualsIncompatibleType",
+            "ArrayEquals",
+            "ArrayHashCode",
+            "ArrayToString",
+            
+            // 戻り値関連
+            "ReturnValueIgnored",
+            "FutureReturnValueIgnored",
+            "CheckReturnValue",
+            "CanIgnoreReturnValueSuggester",
+            "NullableVoid",
+            "VoidMissingNullable",
+            
+            // 文字列フォーマット関連
+            "InlineFormatString",
+            "FormatString",
+            "FormatStringAnnotation",
+            
+            // switch文関連
+            "MissingCasesInEnumSwitch",
+            "UnnecessaryDefaultInEnumSwitch",
+            "MissingDefault",
+            
+            // 可変性関連
+            "MixedMutabilityReturnType",
+            "DoNotCallSuggester",
+            "Immutable",
+            "MutableConstantField",
+            
+            // アクセス修飾子関連
+            "PrivateConstructorForUtilityClass",
+            "ProtectedMembersInFinalClass",
+            "PackageLocation",
+            
+            // アノテーション関連
+            "AnnotationPosition",
+            "SuppressWarningsDeprecated",
+            "InlineMeSuggester",
+            
+            // 型関連
+            "TypeParameterShadowing",
+            "TypeParameterNaming",
+            "ClassNamedLikeTypeParameter",
+            "InterfaceWithOnlyStatics",
+            
+            // その他の最適化
+            "OptionalMapToOptional",
+            "OrphanedFormatString",
+            "LongFloatConversion",
+            "FloatCast",
+            "CharacterGetNumericValue",
+            "BigDecimalEquals",
+            "EqualsNull",
+            "SelfAssignment",
+            "SelfComparison",
+            "SelfEquals",
+            "ModifyingCollectionWithItself",
+            "InfiniteRecursion",
+            "ConstantOverflow",
+            "NullTernary",
+            "MissingBraces",
+            "EmptyBlockTag",
+            "AlmostJavadoc",
+            "InvalidBlockTag",
+            "JavaLangClash",
+            "RedundantOverride",
+            "RedundantModifier",
+            "RequiredModifiers",
+            "UnnecessaryFinal",
+            "UnnecessaryStaticImport",
+            "WrongParameterPackage"
+        ]))
+        errorproneArgs.add("-XepPatchLocation:IN_PLACE")
+        
+        // NullAway設定
+        nullaway {
+            error()
+            annotatedPackages.add("com.groovylsp")
+            excludedFieldAnnotations.add("javax.inject.Inject")
+            excludedFieldAnnotations.add("dagger.Lazy")
+            checkOptionalEmptiness.set(true)
+            acknowledgeRestrictiveAnnotations.set(true)
+            jspecifyMode.set(true)
+        }
+    }
+    
+    // テストコンパイル時はNullAwayを無効化
+    if (name.toLowerCase().contains("test")) {
+        options.errorprone {
+            disable("NullAway")
+        }
+    }
+}

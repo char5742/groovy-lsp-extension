@@ -12,7 +12,7 @@ import org.jspecify.annotations.Nullable;
 /** Text document service implementation for Groovy files. */
 public class GroovyTextDocumentService implements TextDocumentService, LanguageClientAware {
 
-  @Nullable private LanguageClient client;
+  private @Nullable LanguageClient client;
 
   @Override
   public void didOpen(DidOpenTextDocumentParams params) {
@@ -37,5 +37,9 @@ public class GroovyTextDocumentService implements TextDocumentService, LanguageC
   @Override
   public void connect(LanguageClient client) {
     this.client = client;
+  }
+
+  protected @Nullable LanguageClient getClient() {
+    return client;
   }
 }

@@ -1,0 +1,95 @@
+# Lefthook configuration for Groovy LSP Extension
+# https://github.com/evilmartians/lefthook
+
+# Skip execution in CI environment
+skip_in_ci: true
+
+pre-commit:
+  parallel: true
+  commands:
+    spotless-check:
+      tags: [formatting, java]
+      root: "lsp-core/"
+      run: ./gradlew spotlessCheck
+      skip:
+        - merge
+        - rebase
+      fail_text: |
+        Spotlessフォーマットチェックが失敗しました。以下のコマンドで修正してください:
+        cd lsp-core && ./gradlew spotlessApply
+    
+    errorprone-check:
+      tags: [static-analysis, java]
+      root: "lsp-core/"
+      run: ./gradlew compileJava compileTestJava -PerrorproneEnabled=true
+      skip:
+        - merge
+        - rebase
+      fail_text: |
+        Error Proneがコードの問題を検出しました。出力を確認して問題を修正してください。
+
+pre-push:
+  parallel: false
+  commands:
+    java-tests:
+      tags: [test, java]
+      root: "lsp-core/"
+      run: ./gradlew test
+      fail_text: |
+        Javaテストが失敗しました。すべてのテストが成功してからプッシュしてください。
+        './gradlew test' を実行して失敗したテストを確認
+    
+    java-integration-tests:
+      tags: [test, java, integration]
+      root: "lsp-core/"
+      run: ./gradlew integrationTest
+      fail_text: |
+        統合テストが失敗しました。すべての統合テストが成功してからプッシュしてください。
+    
+    typescript-tests:
+      tags: [test, typescript]
+      root: "vscode-extension/"
+      run: |
+        if [ -f "package.json" ]; then
+          npm test
+        else
+          echo "VSCode extension not yet implemented, skipping TypeScript tests"
+        fi
+      fail_text: |
+        TypeScriptテストが失敗しました。すべてのテストが成功してからプッシュしてください。
+        'npm test' を実行して失敗したテストを確認
+    
+    coverage-check:
+      tags: [coverage, java]
+      root: "lsp-core/"
+      run: ./gradlew jacocoTestReport jacocoTestCoverageVerification
+      fail_text: |
+        コードカバレッジが要件を満たしていません（80%以上必要）。
+        カバレッジを向上させるためにテストを追加してください。
+
+# その他のGitフック設定
+commit-msg:
+  commands:
+    conventional-commit:
+      run: |
+        # コミットメッセージがConventional Commits仕様に準拠しているかチェック
+        commit_regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .{1,100}$'
+        if ! grep -qE "$commit_regex" "$1"; then
+          echo "コミットメッセージがConventional Commits仕様に準拠していません！"
+          echo "形式: <type>(<scope>): <subject>"
+          echo "例: feat(lsp): add hover support for Spock tests"
+          echo ""
+          echo "使用可能なタイプ:"
+          echo "  feat:     新機能"
+          echo "  fix:      バグ修正"
+          echo "  docs:     ドキュメント更新"
+          echo "  style:    コードフォーマット（機能に影響なし）"
+          echo "  refactor: リファクタリング（新機能でもバグ修正でもない）"
+          echo "  perf:     パフォーマンス改善"
+          echo "  test:     テストの追加または修正"
+          echo "  build:    ビルドシステムまたは外部依存の変更"
+          echo "  ci:       CI設定ファイルとスクリプトの変更"
+          echo "  chore:    srcまたはtestファイルを変更しないその他の変更"
+          echo "  revert:   以前のコミットを取り消し"
+          exit 1
+        fi

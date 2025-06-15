@@ -8,6 +8,7 @@ import io.vavr.control.Try;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageClient;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +23,7 @@ public final class Main {
   public static void main(String[] args) {
     LOGGER.info("Starting Groovy Language Server...");
 
-    Either<Throwable, Void> result =
+    Either<Throwable, @Nullable Void> result =
         Try.<Void>of(
                 () -> {
                   // Create the language server instance using Dagger

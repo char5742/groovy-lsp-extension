@@ -1,0 +1,18 @@
+// テスト設定
+
+test {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+tasks.withType(Test).configureEach {
+    jvmArgs '--enable-preview'
+}
