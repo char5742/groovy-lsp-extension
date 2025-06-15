@@ -1,6 +1,14 @@
-import * as assert from 'node:assert';
+// biome-ignore lint/style/noNamespaceImport: テストで必要
+// biome-ignore lint/correctness/noNodejsModules: テストで必要
+import * as assert from 'node:assert/strict';
+// biome-ignore lint/correctness/noNodejsModules: テストで必要
 import { spawn } from 'node:child_process';
+// biome-ignore lint/style/noNamespaceImport: テストで必要
+// biome-ignore lint/correctness/noNodejsModules: テストで必要
 import * as path from 'node:path';
+
+// モジュールレベルの定数
+const CONTENT_LENGTH_REGEX = /Content-Length: (\d+)\r\n\r\n/;
 
 interface JsonRpcResponse {
   jsonrpc: '2.0';
@@ -16,6 +24,7 @@ interface JsonRpcResponse {
 }
 
 describe('LSP Connection Test Suite', () => {
+  // biome-ignore lint/style/noDoneCallback: LSPサーバーの非同期レスポンスをテストするため必要
   it('LSP server should respond to initialize request', (done) => {
     const jarPath = path.join(
       __dirname,
@@ -55,7 +64,7 @@ describe('LSP Connection Test Suite', () => {
       buffer += data.toString();
 
       // レスポンスのパースを試行
-      const match = buffer.match(/Content-Length: (\d+)\r\n\r\n/);
+      const match = buffer.match(CONTENT_LENGTH_REGEX);
       if (match) {
         const contentLength = Number.parseInt(match[1]);
         const messageStart = match[0].length;

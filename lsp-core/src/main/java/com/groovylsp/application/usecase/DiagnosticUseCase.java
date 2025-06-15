@@ -3,7 +3,9 @@ package com.groovylsp.application.usecase;
 import com.groovylsp.domain.model.DiagnosticItem;
 import com.groovylsp.domain.model.DiagnosticResult;
 import com.groovylsp.domain.model.TextDocument;
+import com.groovylsp.domain.service.LineCountService;
 import io.vavr.control.Either;
+import java.util.ArrayList;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -15,9 +17,12 @@ import org.slf4j.LoggerFactory;
 public class DiagnosticUseCase {
 
   private static final Logger logger = LoggerFactory.getLogger(DiagnosticUseCase.class);
+  private final LineCountService lineCountService;
 
   @Inject
-  public DiagnosticUseCase() {}
+  public DiagnosticUseCase(LineCountService lineCountService) {
+    this.lineCountService = lineCountService;
+  }
 
   /**
    * テキストドキュメントを診断する。
@@ -28,18 +33,34 @@ public class DiagnosticUseCase {
   public Either<String, DiagnosticResult> diagnose(TextDocument document) {
     logger.info("Starting diagnosis for document: {}", document.uri());
 
-    // Phase 1 M1.2: 固定メッセージを表示
-    var diagnosticItem =
-        new DiagnosticItem(
-            new DiagnosticItem.DocumentPosition(0, 0),
-            new DiagnosticItem.DocumentPosition(0, 0),
-            DiagnosticItem.DiagnosticSeverity.INFORMATION,
-            "Hello from Groovy LSP",
-            "groovy-lsp");
+    List<DiagnosticItem> diagnostics = new ArrayList<>();
 
-    var result = new DiagnosticResult(document.uri(), List.of(diagnosticItem));
+    // Phase 2 M2.1: 行カウント機能
+    var lineCountResult = lineCountService.countLines(document.content());
 
-    logger.info("Diagnosis completed with {} items", result.diagnostics().size());
-    return Either.right(result);
+    return lineCountResult
+        .map(
+            result -> {
+              // 行カウント結果を診断メッセージとして追加
+              var lineCountItem =
+                  new DiagnosticItem(
+                      new DiagnosticItem.DocumentPosition(0, 0),
+                      new DiagnosticItem.DocumentPosition(0, 0),
+                      DiagnosticItem.DiagnosticSeverity.INFORMATION,
+                      result.toFormattedString(),
+                      "groovy-lsp-line-count");
+
+              diagnostics.add(lineCountItem);
+
+              var diagnosticResult = new DiagnosticResult(document.uri(), diagnostics);
+              logger.info(
+                  "Diagnosis completed with {} items", diagnosticResult.diagnostics().size());
+              return diagnosticResult;
+            })
+        .mapLeft(
+            error -> {
+              logger.error("Failed to count lines: {}", error);
+              return "行カウントに失敗しました: " + error;
+            });
   }
 }

@@ -1,14 +1,33 @@
-import * as assert from 'node:assert';
+// biome-ignore lint/style/noNamespaceImport: テスト環境では標準的な書き方
+// biome-ignore lint/correctness/noNodejsModules: テスト環境ではNode.jsモジュールが必要
+import * as assert from 'node:assert/strict';
+// biome-ignore lint/style/noNamespaceImport: テスト環境では標準的な書き方
+// biome-ignore lint/correctness/noNodejsModules: テスト環境ではNode.jsモジュールが必要
 import * as path from 'node:path';
+// biome-ignore lint/style/noNamespaceImport: VSCode APIは名前空間での使用が推奨
+// biome-ignore lint/correctness/noUndeclaredDependencies: vscodeは実行時に提供される
 import * as vscode from 'vscode';
-import { activate, deactivate } from './helpers';
 
-suite('Groovyファイル判定の統合テスト', () => {
-  test('Groovyファイルに対してのみ診断が実行される', async () => {
-    await activate();
+describe('Groovyファイル判定の統合テスト', () => {
+  // biome-ignore lint/suspicious/noExplicitAny: 拡張機能のexportsの型は動的
+  let extension: vscode.Extension<any> | undefined;
 
+  beforeEach(async () => {
+    // 拡張機能を取得して有効化
+    extension = vscode.extensions.getExtension('groovy-lsp.groovy-lsp');
+    if (extension && !extension.isActive) {
+      await extension.activate();
+    }
+  });
+
+  afterEach(async () => {
+    // テスト後のクリーンアップ
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+  });
+
+  it('Groovyファイルに対してのみ診断が実行される', async () => {
     // Groovyファイルを開く
-    const groovyPath = path.join(__dirname, '../../../test-fixtures/Test.groovy');
+    const groovyPath = path.join(__dirname, '../../test-fixtures/Test.groovy');
     const groovyDoc = await vscode.workspace.openTextDocument(groovyPath);
     await vscode.window.showTextDocument(groovyDoc);
 
@@ -20,7 +39,7 @@ suite('Groovyファイル判定の統合テスト', () => {
     assert.ok(groovyDiagnostics.length > 0, 'Groovyファイルには診断が必要です');
 
     // Javaファイルを開く
-    const javaPath = path.join(__dirname, '../../../test-fixtures/Test.java');
+    const javaPath = path.join(__dirname, '../../test-fixtures/Test.java');
     const javaDoc = await vscode.workspace.openTextDocument(javaPath);
     await vscode.window.showTextDocument(javaDoc);
 
@@ -30,15 +49,11 @@ suite('Groovyファイル判定の統合テスト', () => {
     // Javaファイルには診断が存在しないことを確認
     const javaDiagnostics = vscode.languages.getDiagnostics(javaDoc.uri);
     assert.strictEqual(javaDiagnostics.length, 0, 'Javaファイルには診断が存在しないはずです');
-
-    await deactivate();
   });
 
-  test('Gradleファイルに対して診断が実行される', async () => {
-    await activate();
-
+  it('Gradleファイルに対して診断が実行される', async () => {
     // build.gradleファイルを開く
-    const gradlePath = path.join(__dirname, '../../../test-fixtures/build.gradle');
+    const gradlePath = path.join(__dirname, '../../test-fixtures/build.gradle');
     const gradleDoc = await vscode.workspace.openTextDocument(gradlePath);
     await vscode.window.showTextDocument(gradleDoc);
 
@@ -48,15 +63,11 @@ suite('Groovyファイル判定の統合テスト', () => {
     // Gradleファイルには診断が存在することを確認
     const gradleDiagnostics = vscode.languages.getDiagnostics(gradleDoc.uri);
     assert.ok(gradleDiagnostics.length > 0, 'Gradleファイルには診断が必要です');
-
-    await deactivate();
   });
 
-  test('Gradle Kotlinファイルに対して診断が実行される', async () => {
-    await activate();
-
+  it('Gradle Kotlinファイルに対して診断が実行される', async () => {
     // settings.gradle.ktsファイルを開く
-    const gradleKtsPath = path.join(__dirname, '../../../test-fixtures/settings.gradle.kts');
+    const gradleKtsPath = path.join(__dirname, '../../test-fixtures/settings.gradle.kts');
     const gradleKtsDoc = await vscode.workspace.openTextDocument(gradleKtsPath);
     await vscode.window.showTextDocument(gradleKtsDoc);
 
@@ -66,7 +77,5 @@ suite('Groovyファイル判定の統合テスト', () => {
     // Gradle Kotlinファイルには診断が存在することを確認
     const gradleKtsDiagnostics = vscode.languages.getDiagnostics(gradleKtsDoc.uri);
     assert.ok(gradleKtsDiagnostics.length > 0, 'Gradle Kotlinファイルには診断が必要です');
-
-    await deactivate();
   });
 });

@@ -1,4 +1,6 @@
-import * as assert from 'node:assert';
+// biome-ignore lint/style/noNamespaceImport: テストで必要
+// biome-ignore lint/correctness/noNodejsModules: テストで必要
+import * as assert from 'node:assert/strict';
 
 describe('Unit Test Example', () => {
   it('Simple arithmetic test', () => {

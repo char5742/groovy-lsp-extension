@@ -1,3 +1,5 @@
+// biome-ignore lint/style/noNamespaceImport: テスト環境では標準的な書き方
+// biome-ignore lint/correctness/noNodejsModules: テスト環境ではNode.jsモジュールが必要
 import * as path from 'node:path';
 import { runTests } from '@vscode/test-electron';
 
@@ -17,7 +19,7 @@ export interface TestRunnerOptions {
  * 共通のテスト実行関数
  */
 export async function runTestSuite(options: TestRunnerOptions): Promise<void> {
-  const { testSuitePath, timeout = 60000, description } = options;
+  const { testSuitePath, timeout = 60000 } = options;
 
   try {
     // Extension Manifest package.jsonを含むフォルダ
@@ -41,7 +43,6 @@ export async function runTestSuite(options: TestRunnerOptions): Promise<void> {
 
     // ヘッドレス環境での実行を検出
     if (!process.env.DISPLAY && process.platform === 'linux') {
-      console.log('Running in headless environment, adding --disable-gpu flag');
       runOptions.launchArgs.push('--disable-gpu');
     }
 
@@ -53,8 +54,7 @@ export async function runTestSuite(options: TestRunnerOptions): Promise<void> {
 
     // VS Codeをダウンロードし、解凍してテストを実行
     await Promise.race([testPromise, timeoutPromise]);
-  } catch (err) {
-    console.error(`Failed to run ${description}:`, err);
+  } catch (_err) {
     process.exit(1);
   }
 }
@@ -65,11 +65,9 @@ export async function runTestSuite(options: TestRunnerOptions): Promise<void> {
 export function createTestRunner(options: TestRunnerOptions): void {
   runTestSuite(options)
     .then(() => {
-      console.log(`${options.description} completed successfully`);
       process.exit(0);
     })
-    .catch((err) => {
-      console.error(`${options.description} execution failed:`, err);
+    .catch((_err) => {
       process.exit(1);
     });
 }
