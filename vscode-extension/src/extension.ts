@@ -50,11 +50,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
     },
     outputChannel: outputChannel,
     traceOutputChannel: outputChannel,
-    trace: { server: 'verbose' },
   };
 
   // Language Clientを作成
   client = new LanguageClient('groovy-lsp', 'Groovy Language Server', serverOptions, clientOptions);
+
+  // トレース設定（設定から読み取る）
+  const traceServer = vscode.workspace.getConfiguration('groovy-lsp').get<string>('trace.server', 'off');
+  await client.setTrace(traceServer as any);
 
   // デバッグ用にクライアントイベントをログ
   client.onDidChangeState((event) => {
