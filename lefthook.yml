@@ -85,6 +85,16 @@ pre-push:
         統合テストが失敗しました。すべての統合テストが成功してからプッシュしてください。
         根本原因から対応して短絡的な修正は避けてください
     
+    typescript-tests:
+      tags: [test, typescript]
+      root: "vscode-extension/"
+      use_stdin: true
+      run: npm run test
+      fail_text: |
+        TypeScriptテストが失敗しました。すべてのテストが成功してからプッシュしてください。
+        'npm run test' を実行して失敗したテストを確認
+        根本原因から対応して短絡的な修正は避けてください
+    
     coverage-check:
       tags: [coverage, java]
       root: "lsp-core/"
