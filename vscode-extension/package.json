@@ -40,7 +40,7 @@
     "lint": "biome check ./src",
     "lint:fix": "biome check --write ./src",
     "format": "biome format --write ./src",
-    "test": "xvfb-run -a node ./out/test/runTest.js",
+    "test": "xvfb-run --auto-servernum --server-num=99 --server-args='-screen 0 1024x768x24 -ac' node ./out/test/runTest.js",
     "test:scenarios": "npx ts-node scripts/generate-test-scenarios.ts",
     "coverage": "c8 --check-coverage --lines 80 --functions 80 --branches 80 npm test"
   },

@@ -24,6 +24,10 @@ async function main() {
 
     // VS Codeをダウンロードし、解凍して統合テストを実行
     await runTests(options);
+
+    // 明示的に成功を通知してプロセスを終了
+    console.log('Tests completed successfully');
+    process.exit(0);
   } catch (err) {
     console.error('Failed to run tests');
     process.exit(1);
