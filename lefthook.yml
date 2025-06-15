@@ -85,7 +85,12 @@ pre-push:
     typescript-tests:
       tags: [test, typescript]
       root: "vscode-extension/"
-      run: npm test
+      run: |
+        if command -v xvfb-run >/dev/null 2>&1 && [ -z "$DISPLAY" ]; then
+          timeout 60 xvfb-run -a npm test
+        else
+          npm test
+        fi
       fail_text: |
         TypeScriptテストが失敗しました。すべてのテストが成功してからプッシュしてください。
         'npm test' を実行して失敗したテストを確認
