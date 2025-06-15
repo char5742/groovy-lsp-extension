@@ -38,7 +38,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
     },
     debug: {
       command: 'java',
-      args: ['-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005', '-jar', serverJar],
+      args: ['-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005,quiet=y', '-jar', serverJar],
       transport: TransportKind.stdio,
     },
   };
