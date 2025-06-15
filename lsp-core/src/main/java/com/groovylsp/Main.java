@@ -12,12 +12,12 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Main entry point for the Groovy Language Server. */
+/** Groovy Language Serverのメインエントリーポイント。 */
 public final class Main {
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
   private Main() {
-    // Utility class
+    // ユーティリティクラス
   }
 
   public static void main(String[] args) {
@@ -26,19 +26,19 @@ public final class Main {
     Either<Throwable, @Nullable Void> result =
         Try.<Void>of(
                 () -> {
-                  // Create the language server instance using Dagger
+                  // Daggerを使用してLanguage Serverインスタンスを作成
                   ServerComponent serverComponent = DaggerServerComponent.create();
                   GroovyLanguageServer server = serverComponent.groovyLanguageServer();
 
-                  // Create the launcher for the language server
+                  // Language Server用のランチャーを作成
                   Launcher<LanguageClient> launcher =
                       LSPLauncher.createServerLauncher(server, System.in, System.out);
 
-                  // Connect the language client
+                  // Language Clientを接続
                   LanguageClient client = launcher.getRemoteProxy();
                   server.connect(client);
 
-                  // Start listening for messages
+                  // メッセージのリッスンを開始
                   launcher.startListening().get();
                   return null;
                 })

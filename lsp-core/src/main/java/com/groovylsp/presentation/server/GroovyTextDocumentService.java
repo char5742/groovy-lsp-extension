@@ -14,7 +14,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Text document service implementation for Groovy files. */
+/** Groovyファイル用のテキストドキュメントサービス実装。 */
 @Singleton
 public class GroovyTextDocumentService implements TextDocumentService, LanguageClientAware {
 

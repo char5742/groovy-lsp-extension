@@ -39,7 +39,7 @@ suite('Document Synchronization Test Suite', () => {
 
       lspServer.stdin?.write(header + message);
 
-      // Set up response handler
+      // レスポンスハンドラーを設定
       const currentId = request.id;
       const responseHandler = (data: Buffer) => {
         buffer += data.toString();
@@ -68,7 +68,7 @@ suite('Document Synchronization Test Suite', () => {
 
       lspServer.stdout?.on('data', responseHandler);
 
-      // Timeout
+      // タイムアウト
       setTimeout(() => {
         lspServer.stdout?.off('data', responseHandler);
         reject(new Error(`Timeout waiting for response to ${method}`));
@@ -99,7 +99,7 @@ suite('Document Synchronization Test Suite', () => {
   });
 
   test('Should handle document synchronization', async () => {
-    // Initialize
+    // 初期化
     const initResult = await sendRequest('initialize', {
       processId: process.pid,
       rootUri: 'file:///test',
@@ -120,10 +120,10 @@ suite('Document Synchronization Test Suite', () => {
     const capabilities = initResult.result as { capabilities: { textDocumentSync?: number } };
     assert.strictEqual(capabilities.capabilities.textDocumentSync, 1);
 
-    // Send initialized notification
+    // initialized通知を送信
     await sendRequest('initialized', {});
 
-    // Open document
+    // ドキュメントを開く
     await sendRequest('textDocument/didOpen', {
       textDocument: {
         uri: 'file:///test/example.groovy',
@@ -133,7 +133,7 @@ suite('Document Synchronization Test Suite', () => {
       },
     });
 
-    // Change document
+    // ドキュメントを変更
     await sendRequest('textDocument/didChange', {
       textDocument: {
         uri: 'file:///test/example.groovy',
@@ -146,14 +146,14 @@ suite('Document Synchronization Test Suite', () => {
       ],
     });
 
-    // Close document
+    // ドキュメントを閉じる
     await sendRequest('textDocument/didClose', {
       textDocument: {
         uri: 'file:///test/example.groovy',
       },
     });
 
-    // All requests completed successfully
+    // すべてのリクエストが正常に完了
     assert.ok(true);
   });
 });

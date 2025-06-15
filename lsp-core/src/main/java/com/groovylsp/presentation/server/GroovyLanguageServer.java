@@ -14,7 +14,7 @@ import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.jspecify.annotations.Nullable;
 
-/** Main implementation of the Groovy Language Server. */
+/** Groovy Language Serverの主要実装。 */
 @Singleton
 public class GroovyLanguageServer implements LanguageServer, LanguageClientAware {
 
@@ -34,7 +34,7 @@ public class GroovyLanguageServer implements LanguageServer, LanguageClientAware
   public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
     var capabilities = new ServerCapabilities();
 
-    // Text document synchronization capabilities
+    // テキストドキュメント同期機能
     capabilities.setTextDocumentSync(org.eclipse.lsp4j.TextDocumentSyncKind.Full);
 
     var result = new InitializeResult(capabilities);
@@ -43,20 +43,19 @@ public class GroovyLanguageServer implements LanguageServer, LanguageClientAware
 
   @Override
   public void initialized(InitializedParams params) {
-    // Called after the client received the InitializeResult but before any other
-    // requests/notifications
-    // This is where we can register dynamic capabilities and perform any post-initialization setup
+    // クライアントがInitializeResultを受信した後、他のリクエスト/通知の前に呼び出される
+    // ここで動的機能を登録し、初期化後のセットアップを実行できる
   }
 
   @Override
   public CompletableFuture<Object> shutdown() {
-    // Clean shutdown
+    // クリーンシャットダウン
     return CompletableFuture.completedFuture(null);
   }
 
   @Override
   public void exit() {
-    // Exit the server process
+    // サーバープロセスを終了
     System.exit(0);
   }
 

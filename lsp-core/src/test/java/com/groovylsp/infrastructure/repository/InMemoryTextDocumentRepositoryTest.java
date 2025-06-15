@@ -133,7 +133,7 @@ class InMemoryTextDocumentRepositoryTest {
 
     assertTrue(result.isLeft());
     assertTrue(result.getLeft() instanceof TextDocumentRepository.DocumentError.InvalidDocument);
-    assertTrue(result.getLeft().toString().contains("Version conflict"));
+    assertTrue(result.getLeft().toString().contains("バージョン競合"));
 
     // Verify the newer version is still in the repository
     var stored = repository.findByUri(uri);
@@ -152,7 +152,7 @@ class InMemoryTextDocumentRepositoryTest {
 
     assertTrue(result.isLeft());
     assertTrue(result.getLeft() instanceof TextDocumentRepository.DocumentError.InvalidDocument);
-    assertTrue(result.getLeft().toString().contains("Version conflict"));
+    assertTrue(result.getLeft().toString().contains("バージョン競合"));
 
     // Verify the original document is still in the repository
     var stored = repository.findByUri(uri);

@@ -3,13 +3,13 @@ import { runTests } from '@vscode/test-electron';
 
 async function main() {
   try {
-    // The folder containing the Extension Manifest package.json
+    // Extension Manifest package.jsonを含むフォルダ
     const extensionDevelopmentPath = path.resolve(__dirname, '../../');
 
-    // The path to the extension test script
+    // 拡張機能テストスクリプトへのパス
     const extensionTestsPath = path.resolve(__dirname, './suite/index');
 
-    // Download VS Code, unzip it and run the integration test
+    // VS Codeをダウンロードし、解凍して統合テストを実行
     await runTests({ extensionDevelopmentPath, extensionTestsPath });
   } catch (err) {
     console.error('Failed to run tests');
