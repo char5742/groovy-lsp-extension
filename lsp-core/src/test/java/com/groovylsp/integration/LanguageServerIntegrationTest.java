@@ -13,6 +13,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
+import org.eclipse.lsp4j.InitializedParams;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,6 +54,10 @@ class LanguageServerIntegrationTest {
     // Then
     assertNotNull(initResult);
     assertNotNull(initResult.getCapabilities());
+
+    // When - Send initialized notification
+    InitializedParams initializedParams = new InitializedParams();
+    server.initialized(initializedParams);
 
     // When - Shutdown
     CompletableFuture<Object> shutdownFuture = server.shutdown();

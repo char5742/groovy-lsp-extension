@@ -9,6 +9,7 @@ import com.groovylsp.testing.FastTest;
 import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
+import org.eclipse.lsp4j.InitializedParams;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -36,6 +37,16 @@ class GroovyLanguageServerTest {
     // Then
     assertNotNull(result);
     assertNotNull(result.getCapabilities());
+  }
+
+  @Test
+  @FastTest
+  void testInitialized() {
+    // Given
+    InitializedParams params = new InitializedParams();
+
+    // When/Then - Should not throw exception
+    server.initialized(params);
   }
 
   @Test

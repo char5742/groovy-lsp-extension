@@ -5,6 +5,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
+import org.eclipse.lsp4j.InitializedParams;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageClientAware;
@@ -37,6 +38,13 @@ public class GroovyLanguageServer implements LanguageServer, LanguageClientAware
 
     InitializeResult result = new InitializeResult(capabilities);
     return CompletableFuture.completedFuture(result);
+  }
+
+  @Override
+  public void initialized(InitializedParams params) {
+    // Called after the client received the InitializeResult but before any other
+    // requests/notifications
+    // This is where we can register dynamic capabilities and perform any post-initialization setup
   }
 
   @Override
