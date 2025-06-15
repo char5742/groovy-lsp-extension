@@ -72,7 +72,6 @@ class TestScenarioExtractor {
 
   generateMarkdown(): string {
     let markdown = '# テストシナリオ一覧\n\n';
-    markdown += `*最終更新: ${new Date().toLocaleString('ja-JP')}*\n\n`;
 
     // 統計情報
     const stats = {
@@ -109,7 +108,7 @@ class TestScenarioExtractor {
         if (!suites.has(suiteName)) {
           suites.set(suiteName, []);
         }
-        suites.get(suiteName)!.push(scenario);
+        suites.get(suiteName)?.push(scenario);
       }
 
       // 各スイートを出力
@@ -134,7 +133,6 @@ class TestScenarioExtractor {
   generateJSON(): string {
     return JSON.stringify(
       {
-        generated: new Date().toISOString(),
         stats: {
           total: this.scenarios.length,
           byCategory: {
