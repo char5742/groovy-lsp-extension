@@ -38,7 +38,7 @@ cd lsp-core
 cd vscode-extension
 npm install                  # 依存関係インストール
 npm run compile              # TypeScriptビルド
-npm test                     # テスト実行
+npm run test                 # テスト実行（統合テスト）
 npm run coverage             # カバレッジレポート生成
 npm run lint                 # Biomeチェック実行
 npm run lint:fix             # Biome自動修正

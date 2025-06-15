@@ -31,7 +31,7 @@ jobs:
         run: cd lsp-core && ./gradlew archUnit
       
       # TypeScript静的解析
-      - name: Run ESLint
+      - name: Run Biome
         run: cd vscode-extension && npm run lint
       
       - name: Run TypeScript Compiler
@@ -55,7 +55,7 @@ jobs:
       - name: Run TypeScript Tests
         run: cd vscode-extension && npm test
       
-      - name: Generate C8 Report
+      - name: Generate Coverage Report
         run: cd vscode-extension && npm run coverage
       
       # OctoCoVで可視化

@@ -90,7 +90,7 @@ pre-push:
       run: npm run test
       fail_text: |
         TypeScriptテストが失敗しました。すべてのテストが成功してからプッシュしてください。
-        'npm test' を実行して失敗したテストを確認
+        'npm run test' を実行して失敗したテストを確認
         根本原因から対応して短絡的な修正は避けてください
     
     coverage-check:

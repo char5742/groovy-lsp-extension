@@ -20,7 +20,7 @@ interface JsonRpcResponse {
   };
 }
 
-suite('Document Synchronization Test Suite', () => {
+describe('Document Synchronization Test Suite', () => {
   let lspServer: ChildProcess;
   let messageId = 1;
   let buffer = '';
@@ -88,7 +88,7 @@ suite('Document Synchronization Test Suite', () => {
     });
   }
 
-  setup(() => {
+  beforeEach(() => {
     const jarPath = path.join(
       __dirname,
       '../../../..',
@@ -106,11 +106,11 @@ suite('Document Synchronization Test Suite', () => {
     buffer = '';
   });
 
-  teardown(() => {
+  afterEach(() => {
     lspServer.kill();
   });
 
-  test('Should handle document synchronization', async () => {
+  it('Should handle document synchronization', async () => {
     // 初期化
     const initResult = await sendRequest('initialize', {
       processId: process.pid,

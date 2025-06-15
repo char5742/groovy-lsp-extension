@@ -54,8 +54,9 @@ Groovyファイルを開くと、拡張機能が自動的にLSPサーバーを�
 
 - `npm run compile` - TypeScriptのコンパイル
 - `npm run watch` - 変更を監視して再コンパイル
-- `npm run lint` - ESLintの実行
-- `npm run lint:fix` - ESLintの自動修正付き実行
+- `npm run lint` - Biomeの実行
+- `npm run lint:fix` - Biomeの自動修正付き実行
+- `npm run test` - 統合テストの実行
 
 ### 設定
 

@@ -24,14 +24,11 @@ test/
 ## テストの実行方法
 
 ```bash
-# すべてのテストを実行
-npm test
+# すべてのテストを実行（統合テスト）
+npm run test
 
-# 単体テストのみ実行
-npm run test:unit
-
-# 統合テストのみ実行
-npm run test:integration
+# シナリオ一覧を更新
+npm run test:scenarios
 ```
 
 ## テストカテゴリ

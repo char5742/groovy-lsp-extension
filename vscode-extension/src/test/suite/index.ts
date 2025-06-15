@@ -5,7 +5,7 @@ import * as path from 'node:path';
 export async function run(): Promise<void> {
   // mochaテストを作成
   const mocha = new Mocha({
-    ui: 'tdd',
+    ui: 'bdd',
     color: true,
     timeout: 60000,
   });
