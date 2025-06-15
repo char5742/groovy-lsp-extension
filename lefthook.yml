@@ -92,7 +92,7 @@ commit-msg:
         # コミットメッセージがConventional Commits仕様に準拠しているかチェック
         # 最初の行のみをチェック（タイトル行）
         commit_regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+$'
-        first_line=$(head -n 1 {1})
+        first_line=$(head -n 1 "$1")
         if ! echo "$first_line" | grep -qE "$commit_regex"; then
           echo "コミットメッセージがConventional Commits仕様に準拠していません！"
           echo "形式: <type>(<scope>): <subject>"
