@@ -1,23 +1,64 @@
-# VSCode Extension for Groovy LSP
+# Groovy LSP VSCode拡張機能
 
-This directory will contain the Visual Studio Code extension for the Groovy Language Server.
+Spockフレームワークの拡張サポートを備えたGroovy Language ServerのVisual Studio Code拡張機能です。
 
-## Status
+## 機能
 
-This extension is planned but not yet implemented. The current focus is on developing the Language Server Protocol core implementation in the `lsp-core` directory.
+- VSCode用Language Clientの実装
+- GroovyおよびSpockファイルタイプのサポート（`.groovy`, `.gradle`, `.gvy`, `.gy`, `.gsh`）
+- LSPコアサーバーとの統合
+- デバッグ用の接続ログ出力
 
-## Planned Features
+## 開発
 
-- Language client implementation for VSCode
-- Groovy and Spock file type support
-- Integration with the LSP core server
-- Custom commands and code actions
-- Configuration management
+### 前提条件
+- Node.js 18以上
+- npm
+- Java 23以上（LSPサーバー実行用）
 
-## Development
+### ビルドと実行
 
-Once implementation begins, this extension will be developed using:
-- TypeScript with strict mode enabled
-- async/await for asynchronous operations
-- VSCode Extension API
-- LSP client libraries
+1. 依存関係のインストール:
+   ```bash
+   npm install
+   ```
+
+2. TypeScriptのコンパイル:
+   ```bash
+   npm run compile
+   ```
+
+3. LSPサーバーのビルド:
+   ```bash
+   cd ../lsp-core
+   ./gradlew shadowJar
+   ```
+
+4. デバッグモードで拡張機能を起動:
+   - このディレクトリでVSCodeを開く
+   - F5キーを押して拡張機能が読み込まれた新しいVSCodeウィンドウを起動
+   - `.groovy`ファイルを開いて拡張機能を有効化
+
+### 接続のテスト
+
+1. VSCodeの出力パネルを開く（表示 → 出力）
+2. ドロップダウンから「Groovy Language Server」を選択
+3. 以下のメッセージが表示されることを確認:
+   - "Groovy Language Server extension is activating..."
+   - "Language client state changed: stopped -> starting"
+   - "Groovy Language Server started successfully"
+
+Groovyファイルを開くと、拡張機能が自動的にLSPサーバーを起動します。
+
+### スクリプト
+
+- `npm run compile` - TypeScriptのコンパイル
+- `npm run watch` - 変更を監視して再コンパイル
+- `npm run lint` - ESLintの実行
+- `npm run lint:fix` - ESLintの自動修正付き実行
+
+### 設定
+
+拡張機能は以下の設定オプションを提供します:
+
+- `groovy-lsp.trace.server` - VS CodeとLanguage Server間の通信をトレース（off/messages/verbose）
