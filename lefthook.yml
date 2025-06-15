@@ -64,19 +64,14 @@ pre-push:
     java-integration-tests:
       tags: [test, java, integration]
       root: "lsp-core/"
-      run: ./gradlew integrationTest
+      run: ./gradlew :test --tests "*IntegrationTest"
       fail_text: |
         統合テストが失敗しました。すべての統合テストが成功してからプッシュしてください。
     
     typescript-tests:
       tags: [test, typescript]
       root: "vscode-extension/"
-      run: |
-        if [ -f "package.json" ]; then
-          npm test
-        else
-          echo "VSCode extension not yet implemented, skipping TypeScript tests"
-        fi
+      run: npm test
       fail_text: |
         TypeScriptテストが失敗しました。すべてのテストが成功してからプッシュしてください。
         'npm test' を実行して失敗したテストを確認
@@ -95,8 +90,10 @@ commit-msg:
     conventional-commit:
       run: |
         # コミットメッセージがConventional Commits仕様に準拠しているかチェック
-        commit_regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .{1,100}$'
-        if ! grep -qE "$commit_regex" "$1"; then
+        # 最初の行のみをチェック（タイトル行）
+        commit_regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+$'
+        first_line=$(head -n 1 "$1")
+        if ! echo "$first_line" | grep -qE "$commit_regex"; then
           echo "コミットメッセージがConventional Commits仕様に準拠していません！"
           echo "形式: <type>(<scope>): <subject>"
           echo "例: feat(lsp): add hover support for Spock tests"

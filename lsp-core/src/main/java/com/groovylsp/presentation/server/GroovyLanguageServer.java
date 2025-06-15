@@ -33,8 +33,9 @@ public class GroovyLanguageServer implements LanguageServer, LanguageClientAware
   @Override
   public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
     var capabilities = new ServerCapabilities();
-    // For now, we don't advertise any capabilities
-    // These will be added incrementally in future milestones
+
+    // Text document synchronization capabilities
+    capabilities.setTextDocumentSync(org.eclipse.lsp4j.TextDocumentSyncKind.Full);
 
     var result = new InitializeResult(capabilities);
     return CompletableFuture.completedFuture(result);
