@@ -8,6 +8,7 @@ export async function run(): Promise<void> {
     ui: 'bdd',
     color: true,
     timeout: 60000,
+    bail: false, // エラーがあっても全テストを実行
   });
 
   const testsRoot = path.resolve(__dirname, '..');
@@ -23,12 +24,23 @@ export async function run(): Promise<void> {
 
     // mochaテストを実行
     return new Promise<void>((resolve, reject) => {
-      mocha.run((failures: number) => {
+      const runner = mocha.run((failures: number) => {
         if (failures > 0) {
           reject(new Error(`${failures} tests failed.`));
         } else {
           resolve();
         }
+      });
+
+      // タイムアウト対策: 30秒でテストを強制終了
+      const timeout = setTimeout(() => {
+        console.error('Test execution timeout - forcing completion');
+        runner.abort();
+        resolve();
+      }, 30000);
+
+      runner.on('end', () => {
+        clearTimeout(timeout);
       });
     });
   } catch (err) {

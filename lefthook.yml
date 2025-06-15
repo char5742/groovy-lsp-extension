@@ -87,12 +87,10 @@ pre-push:
     typescript-tests:
       tags: [test, typescript]
       root: "vscode-extension/"
-      run: |
-        # ビルドとリントのみをチェック（統合テストはCIで実行）
-        npm run compile && npm run lint
+      run: npm run test
       fail_text: |
-        TypeScriptのビルドまたはリントが失敗しました。
-        'npm run compile' と 'npm run lint' を実行してエラーを確認してください。
+        TypeScriptテストが失敗しました。すべてのテストが成功してからプッシュしてください。
+        'npm run test' を実行して失敗したテストを確認
         根本原因から対応して短絡的な修正は避けてください
     
     coverage-check:

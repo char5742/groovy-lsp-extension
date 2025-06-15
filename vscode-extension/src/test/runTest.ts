@@ -13,7 +13,13 @@ async function main() {
     const options = {
       extensionDevelopmentPath,
       extensionTestsPath,
-      launchArgs: ['--disable-dev-shm-usage', '--no-sandbox'],
+      launchArgs: [
+        '--disable-dev-shm-usage',
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-extensions',
+        '--disable-gpu-sandbox',
+      ],
     };
 
     // ヘッドレス環境での実行を検出
@@ -24,14 +30,19 @@ async function main() {
 
     // VS Codeをダウンロードし、解凍して統合テストを実行
     await runTests(options);
-
-    // 明示的に成功を通知してプロセスを終了
-    console.log('Tests completed successfully');
-    process.exit(0);
   } catch (err) {
-    console.error('Failed to run tests');
+    console.error('Failed to run tests:', err);
     process.exit(1);
   }
 }
 
-main();
+// プロセスの終了を適切に処理
+main()
+  .then(() => {
+    console.log('All tests completed successfully');
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error('Test execution failed:', err);
+    process.exit(1);
+  });
