@@ -24,3 +24,6 @@ yarn-error.log*
 # Coverage
 coverage/
 .nyc_output/
+
+# Generated files
+src/test/scenarios.json

@@ -2,6 +2,15 @@
 
 このディレクトリにはGroovy LSP VSCode拡張機能のテストが含まれています。
 
+## 📊 現在のテストカバレッジ
+
+最新のテストシナリオ一覧は[SCENARIOS.md](./SCENARIOS.md)を参照してください。
+
+```bash
+# シナリオ一覧を更新
+npm run test:scenarios
+```
+
 ## ディレクトリ構造
 
 ```
