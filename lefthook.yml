@@ -87,7 +87,7 @@ pre-push:
     typescript-tests:
       tags: [test, typescript]
       root: "vscode-extension/"
-      run: npm run test:unit
+      run: npm run test
       fail_text: |
         TypeScriptテストが失敗しました。すべてのテストが成功してからプッシュしてください。
         'npm test' を実行して失敗したテストを確認
