@@ -40,8 +40,9 @@ npm install                  # 依存関係インストール
 npm run compile              # TypeScriptビルド
 npm test                     # テスト実行
 npm run coverage             # カバレッジレポート生成
-npm run lint                 # ESLint実行
-npm run lint:fix             # ESLint自動修正
+npm run lint                 # Biomeチェック実行
+npm run lint:fix             # Biome自動修正
+npm run format               # Biomeフォーマット実行
 ```
 
 ## 開発ルール
@@ -92,3 +93,7 @@ vscode-extension/
 ## 追加ガイドライン
 
 - セットアップ用のスクリプトは要求されたときのみ作成してください
+
+## ツール関連
+
+- githubの操作はghコマンドで行うようにしてください
