@@ -33,6 +33,7 @@ pre-commit:
       root: "vscode-extension/"
       glob: "*.{js,ts,jsx,tsx,json}"
       run: npx biome format --write {staged_files}
+      stage_fixed: true
       skip:
         - merge
         - rebase
@@ -44,11 +45,24 @@ pre-commit:
       root: "vscode-extension/"
       glob: "*.{js,ts,jsx,tsx}"
       run: npx biome check --write {staged_files}
+      stage_fixed: true
       skip:
         - merge
         - rebase
       fail_text: |
         Biomeリントエラーが検出されました。自動修正を試みています。
+    
+    generate-scenarios:
+      tags: [test, typescript]
+      root: "vscode-extension/"
+      glob: "{src/test/**/*.{test,spec}.ts,scripts/generate-test-scenarios.ts}"
+      run: npm run test:scenarios
+      stage_fixed: true
+      skip:
+        - merge
+        - rebase
+      fail_text: |
+        テストシナリオの生成に失敗しました。
 
 pre-push:
   parallel: false
