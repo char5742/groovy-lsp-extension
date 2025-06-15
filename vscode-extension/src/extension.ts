@@ -6,10 +6,11 @@ import {
   type ServerOptions,
   TransportKind,
 } from 'vscode-languageclient/node';
+import type { ExtensionApi } from './types';
 
 let client: LanguageClient | undefined;
 
-export async function activate(context: vscode.ExtensionContext): Promise<void> {
+export async function activate(context: vscode.ExtensionContext): Promise<ExtensionApi> {
   const outputChannel = vscode.window.createOutputChannel('Groovy Language Server');
   outputChannel.appendLine('Groovy Language Server extension is activating...');
 
@@ -39,13 +40,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // クライアントオプション
   const clientOptions: LanguageClientOptions = {
-    documentSelector: [{ scheme: 'file', language: 'groovy' }],
+    documentSelector: [
+      { scheme: 'file', language: 'groovy' },
+      { scheme: 'untitled', language: 'groovy' },
+    ],
     synchronize: {
       configurationSection: 'groovy-lsp',
       fileEvents: vscode.workspace.createFileSystemWatcher('**/*.{groovy,gradle,gvy,gy,gsh}'),
     },
     outputChannel: outputChannel,
     traceOutputChannel: outputChannel,
+    trace: { server: 'verbose' },
   };
 
   // Language Clientを作成
@@ -63,7 +68,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   } catch (error) {
     outputChannel.appendLine(`Failed to start Groovy Language Server: ${error}`);
     vscode.window.showErrorMessage(`Failed to start Groovy Language Server: ${error}`);
+    throw error;
   }
+
+  return { client };
 }
 
 export async function deactivate(): Promise<void> {
