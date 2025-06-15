@@ -40,6 +40,18 @@ pre-commit:
       fail_text: |
         Biomeリントエラーが検出されました。自動修正を試みています。
     
+    typescript-check:
+      tags: [type-check, typescript]
+      root: "vscode-extension/"
+      glob: "*.{ts,tsx}"
+      run: ./node_modules/.bin/tsc --noEmit
+      skip:
+        - merge
+        - rebase
+      fail_text: |
+        TypeScriptの型エラーが検出されました。
+        エラーの詳細を確認して修正してください。
+    
     generate-scenarios:
       tags: [test, typescript]
       root: "vscode-extension/"

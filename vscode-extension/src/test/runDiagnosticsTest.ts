@@ -1,4 +1,4 @@
-import { createTestRunner } from './runTestBase.ts';
+import { createTestRunner } from './runTestBase';
 
 // 診断機能のテストのみを実行
 createTestRunner({

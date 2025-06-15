@@ -1,4 +1,4 @@
-import { createTestRunner } from './runTestBase.ts';
+import { createTestRunner } from './runTestBase';
 
 // ユニットテストを実行
 createTestRunner({

@@ -4,7 +4,7 @@ import * as assert from 'node:assert/strict';
 // biome-ignore lint/style/noNamespaceImport: VSCode APIを使用
 // biome-ignore lint/correctness/noUndeclaredDependencies: VSCodeが提供
 import * as vscode from 'vscode';
-import { closeDoc, getLanguageClient, openDoc } from '../test-utils/lsp.ts';
+import { closeDoc, getLanguageClient, openDoc } from '../test-utils/lsp';
 
 // 診断を待つラッパー関数
 async function waitForDiagnostics(doc: vscode.TextDocument): Promise<vscode.Diagnostic[]> {

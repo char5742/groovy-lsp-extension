@@ -4,7 +4,7 @@ import * as assert from 'node:assert/strict';
 // biome-ignore lint/style/noNamespaceImport: VSCode APIを使用
 // biome-ignore lint/correctness/noUndeclaredDependencies: VSCodeが提供
 import * as vscode from 'vscode';
-import { getLanguageClient } from '../test-utils/lsp.ts';
+import { getLanguageClient } from '../test-utils/lsp';
 
 describe('コマンド機能のテスト', () => {
   it('拡張機能が正しくアクティベートされる', async () => {
