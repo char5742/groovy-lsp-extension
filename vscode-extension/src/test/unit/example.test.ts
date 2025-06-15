@@ -1,12 +1,12 @@
-import * as assert from 'node:assert';
+import { describe, expect, test } from 'bun:test';
 
 describe('Unit Test Example', () => {
-  it('Simple arithmetic test', () => {
-    assert.strictEqual(1 + 1, 2);
+  test('Simple arithmetic test', () => {
+    expect(1 + 1).toBe(2);
   });
 
-  it('String test', () => {
+  test('String test', () => {
     const message = 'Hello, World!';
-    assert.ok(message.includes('World'));
+    expect(message).toContain('World');
   });
 });

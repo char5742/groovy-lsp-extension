@@ -12,20 +12,19 @@ Spockフレームワークの拡張サポートを備えたGroovy Language Serve
 ## 開発
 
 ### 前提条件
-- Node.js 18以上
-- npm
+- Bun 1.0以上（または Node.js 18以上）
 - Java 23以上（LSPサーバー実行用）
 
 ### ビルドと実行
 
 1. 依存関係のインストール:
    ```bash
-   npm install
+   bun install
    ```
 
 2. TypeScriptのコンパイル:
    ```bash
-   npm run compile
+   bun run compile
    ```
 
 3. LSPサーバーのビルド:
@@ -52,10 +51,12 @@ Groovyファイルを開くと、拡張機能が自動的にLSPサーバーを�
 
 ### スクリプト
 
-- `npm run compile` - TypeScriptのコンパイル
-- `npm run watch` - 変更を監視して再コンパイル
-- `npm run lint` - ESLintの実行
-- `npm run lint:fix` - ESLintの自動修正付き実行
+- `bun run compile` - TypeScriptのコンパイル
+- `bun run watch` - 変更を監視して再コンパイル
+- `bun run lint` - Biomeの実行
+- `bun run lint:fix` - Biomeの自動修正付き実行
+- `bun test` - テストの実行
+- `bun run test:int` - 統合テストの実行
 
 ### 設定
 

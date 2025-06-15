@@ -32,7 +32,7 @@ pre-commit:
       tags: [formatting, typescript]
       root: "vscode-extension/"
       glob: "*.{js,ts,jsx,tsx,json}"
-      run: npx biome format --write {staged_files}
+      run: bunx biome format --write {staged_files}
       stage_fixed: true
       skip:
         - merge
@@ -44,7 +44,7 @@ pre-commit:
       tags: [linting, typescript]
       root: "vscode-extension/"
       glob: "*.{js,ts,jsx,tsx}"
-      run: npx biome check --write {staged_files}
+      run: bunx biome check --write {staged_files}
       stage_fixed: true
       skip:
         - merge
@@ -56,7 +56,7 @@ pre-commit:
       tags: [test, typescript]
       root: "vscode-extension/"
       glob: "{src/test/**/*.{test,spec}.ts,scripts/generate-test-scenarios.ts}"
-      run: npm run test:scenarios
+      run: bun run test:scenarios
       stage_fixed: true
       skip:
         - merge
@@ -87,10 +87,10 @@ pre-push:
     typescript-tests:
       tags: [test, typescript]
       root: "vscode-extension/"
-      run: npm run test
+      run: bun run test
       fail_text: |
         TypeScriptテストが失敗しました。すべてのテストが成功してからプッシュしてください。
-        'npm test' を実行して失敗したテストを確認
+        'bun test' を実行して失敗したテストを確認
         根本原因から対応して短絡的な修正は避けてください
     
     coverage-check:

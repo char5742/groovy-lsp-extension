@@ -8,7 +8,7 @@
 
 ```bash
 # シナリオ一覧を更新
-npm run test:scenarios
+bun run test:scenarios
 ```
 
 ## ディレクトリ構造
@@ -25,13 +25,13 @@ test/
 
 ```bash
 # すべてのテストを実行
-npm test
+bun test
 
 # 単体テストのみ実行
-npm run test:unit
+bun run test:unit
 
 # 統合テストのみ実行
-npm run test:integration
+bun run test:integration
 ```
 
 ## テストカテゴリ
@@ -59,5 +59,5 @@ LSPサーバーとの通信をテストします。
 ## 注意事項
 
 - 統合テストの実行にはLSPサーバーのJARファイルがビルドされている必要があります
-- テスト実行前に`npm run compile`でTypeScriptをコンパイルしてください
+- テスト実行前に`bun run compile`でTypeScriptをコンパイルしてください
 - LSPサーバーのログは`lsp-core/server.log`に出力されます
