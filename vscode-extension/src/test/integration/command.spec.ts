@@ -1,47 +1,47 @@
-import { describe, expect, test } from 'bun:test';
+import * as assert from 'node:assert';
 import * as vscode from 'vscode';
 import { getLanguageClient } from '../test-utils/lsp';
 
 describe('コマンド機能のテスト', () => {
-  test('拡張機能が正しくアクティベートされる', async () => {
+  it('拡張機能が正しくアクティベートされる', async () => {
     const extension = vscode.extensions.getExtension('groovy-lsp.groovy-lsp');
-    expect(extension).toBeDefined();
+    assert.ok(extension);
 
     if (!extension?.isActive) {
       await extension?.activate();
     }
 
-    expect(extension?.isActive).toBe(true);
+    assert.strictEqual(extension?.isActive, true);
   });
 
-  test('groovy-lsp.restartServerコマンドが登録されている', async () => {
+  it('groovy-lsp.restartServerコマンドが登録されている', async () => {
     const commands = await vscode.commands.getCommands(true);
-    expect(commands).toContain('groovy-lsp.restartServer');
+    assert.ok(commands.includes('groovy-lsp.restartServer'));
   });
 
-  test('groovy-lsp.showOutputChannelコマンドが登録されている', async () => {
+  it('groovy-lsp.showOutputChannelコマンドが登録されている', async () => {
     const commands = await vscode.commands.getCommands(true);
-    expect(commands).toContain('groovy-lsp.showOutputChannel');
+    assert.ok(commands.includes('groovy-lsp.showOutputChannel'));
   });
 
-  test('Language Clientが正しく初期化される', async () => {
+  it('Language Clientが正しく初期化される', async () => {
     const client = await getLanguageClient();
-    expect(client).toBeDefined();
+    assert.ok(client);
 
     // クライアントが開始されているか確認
     if (client) {
-      expect(client.state).toBe(2); // State.Running = 2
+      assert.strictEqual(client.state, 2); // State.Running = 2
     }
   });
 
-  test('設定が正しく読み込まれる', async () => {
+  it('設定が正しく読み込まれる', async () => {
     const config = vscode.workspace.getConfiguration('groovy-lsp');
     const traceLevel = config.get<string>('trace.server');
 
-    expect(['off', 'messages', 'verbose']).toContain(traceLevel);
+    assert.ok(['off', 'messages', 'verbose'].includes(traceLevel || ''));
   });
 
-  test('ステータスバーアイテムが表示される', async () => {
+  it('ステータスバーアイテムが表示される', async () => {
     // 拡張機能をアクティベート
     const extension = vscode.extensions.getExtension('groovy-lsp.groovy-lsp');
     if (!extension?.isActive) {
@@ -53,20 +53,20 @@ describe('コマンド機能のテスト', () => {
     // 拡張機能のエクスポートから確認する必要がある
     const exports = extension?.exports;
     if (exports?.statusBarItem) {
-      expect(exports.statusBarItem).toBeDefined();
+      assert.ok(exports.statusBarItem);
     }
   });
 
-  test('restartServerコマンドが実行できる', async () => {
+  it('restartServerコマンドが実行できる', async () => {
     // コマンドの実行
     try {
       await vscode.commands.executeCommand('groovy-lsp.restartServer');
       // エラーが発生しなければ成功
-      expect(true).toBe(true);
+      assert.ok(true);
     } catch (error) {
       // Language Serverが起動していない場合はエラーになる可能性がある
       // その場合でもコマンド自体は登録されていることを確認
-      expect(error).toBeDefined();
+      assert.ok(error);
     }
   });
 });

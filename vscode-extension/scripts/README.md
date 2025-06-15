@@ -7,7 +7,7 @@
 ### 実行方法
 
 ```bash
-bun run test:scenarios
+npm run test:scenarios
 ```
 
 ### 出力ファイル
@@ -54,7 +54,7 @@ GitHub Actionsなどで自動実行し、PRにコメントとして投稿でき�
 
 ```yaml
 - name: Generate test scenarios
-  run: bun run test:scenarios
+  run: npm run test:scenarios
   
 - name: Upload scenarios
   uses: actions/upload-artifact@v3

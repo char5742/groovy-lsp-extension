@@ -34,15 +34,15 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "bun run compile",
-    "compile": "bun x esbuild src/extension.ts --bundle --platform=node --outfile=out/extension.js --external:vscode",
+    "vscode:prepublish": "npm run compile",
+    "compile": "npx esbuild src/extension.ts --bundle --platform=node --outfile=out/extension.js --external:vscode",
     "watch": "tsc -watch -p ./",
     "lint": "biome check ./src",
     "lint:fix": "biome check --write ./src",
     "format": "biome format --write ./src",
-    "test": "xvfb-run -a bun run scripts/run-integration.ts",
-    "test:scenarios": "bun scripts/generate-test-scenarios.ts",
-    "coverage": "c8 --check-coverage --lines 80 --functions 80 --branches 80 xvfb-run -a bun run scripts/run-integration.ts"
+    "test": "xvfb-run -a node ./out/test/runTest.js",
+    "test:scenarios": "npx ts-node scripts/generate-test-scenarios.ts",
+    "coverage": "c8 --check-coverage --lines 80 --functions 80 --branches 80 npm test"
   },
   "license": "MIT",
   "devDependencies": {

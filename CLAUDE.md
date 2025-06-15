@@ -36,13 +36,13 @@ cd lsp-core
 ### VSCode拡張機能
 ```bash
 cd vscode-extension
-bun install                  # 依存関係インストール
-bun run compile              # TypeScriptビルド
-bun run test                 # テスト実行（統合テスト）
-bun run coverage             # カバレッジレポート生成
-bun run lint                 # Biomeチェック実行
-bun run lint:fix             # Biome自動修正
-bun run format               # Biomeフォーマット実行
+npm install                  # 依存関係インストール
+npm run compile              # TypeScriptビルド
+npm run test                 # テスト実行（統合テスト）
+npm run coverage             # カバレッジレポート生成
+npm run lint                 # Biomeチェック実行
+npm run lint:fix             # Biome自動修正
+npm run format               # Biomeフォーマット実行
 ```
 
 ## 開発ルール

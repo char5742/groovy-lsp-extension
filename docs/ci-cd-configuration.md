@@ -32,10 +32,10 @@ jobs:
       
       # TypeScript静的解析
       - name: Run Biome
-        run: cd vscode-extension && bun run lint
+        run: cd vscode-extension && npm run lint
       
       - name: Run TypeScript Compiler
-        run: cd vscode-extension && bun run compile -- --noEmit
+        run: cd vscode-extension && npm run compile -- --noEmit
 
   test:
     name: Test & Coverage
@@ -53,10 +53,10 @@ jobs:
       
       # TypeScriptテスト
       - name: Run TypeScript Tests
-        run: cd vscode-extension && bun test
+        run: cd vscode-extension && npm test
       
       - name: Generate Coverage Report
-        run: cd vscode-extension && bun run coverage
+        run: cd vscode-extension && npm run coverage
       
       # OctoCoVで可視化
       - name: Run OctoCov
@@ -80,7 +80,7 @@ jobs:
       - name: Build All
         run: |
           cd lsp-core && ./gradlew build
-          cd ../vscode-extension && bun run build
+          cd ../vscode-extension && npm run build
       
       - name: Run Integration Tests
         run: ./scripts/integration-test.sh
@@ -175,7 +175,7 @@ jacocoTestReport {
 ```json
 {
   "scripts": {
-    "coverage": "c8 --check-coverage --lines 80 --functions 80 --branches 80 bun test"
+    "coverage": "c8 --check-coverage --lines 80 --functions 80 --branches 80 npm test"
   },
   "c8": {
     "include": ["src/**/*.ts"],

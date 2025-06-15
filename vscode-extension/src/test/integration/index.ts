@@ -18,7 +18,7 @@ export function run(): Promise<void> {
         return reject(err);
       }
 
-      // .spec.jsファイルも含める（Bunテスト用）
+      // .spec.jsファイルも含める
       glob('**/*.spec.js', { cwd: testsRoot }, (err2, specFiles) => {
         if (err2) {
           return reject(err2);

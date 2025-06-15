@@ -15,8 +15,8 @@ interface JsonRpcResponse {
   };
 }
 
-suite('LSP Connection Test Suite', () => {
-  test('LSP server should respond to initialize request', (done) => {
+describe('LSP Connection Test Suite', () => {
+  it('LSP server should respond to initialize request', (done) => {
     const jarPath = path.join(
       __dirname,
       '../../../..',

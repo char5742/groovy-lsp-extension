@@ -22,7 +22,7 @@ cd lsp-core-extension
 
 # 依存関係のインストール
 cd lsp-core && ./gradlew build
-cd ../vscode-extension && bun install
+cd ../vscode-extension && npm install
 ```
 
 ## 開発フロー
@@ -219,8 +219,8 @@ rm -rf ~/.gradle/caches
 
 ```bash
 # node_modulesの再インストール
-rm -rf node_modules bun.lockb
-bun install
+rm -rf node_modules package-lock.json
+npm install
 
 # VSCodeの再起動
 ```

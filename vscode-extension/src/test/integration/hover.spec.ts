@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'bun:test';
+import * as assert from 'node:assert';
 import * as vscode from 'vscode';
 import { closeDoc, getHoverAt, openDoc } from '../test-utils/lsp';
 
@@ -11,7 +11,7 @@ describe('Hover機能のテスト', () => {
     }
   });
 
-  test('メソッド名にホバーすると型情報が表示される', async () => {
+  it('メソッド名にホバーすると型情報が表示される', async () => {
     const code = `
       class Example {
         String getMessage() {
@@ -29,17 +29,17 @@ describe('Hover機能のテスト', () => {
     const position = new vscode.Position(7, 14); // "getMessage"の位置
     const hovers = await getHoverAt(doc, position);
 
-    expect(hovers).toBeDefined();
-    expect(hovers.length).toBeGreaterThan(0);
+    assert.ok(hovers);
+    assert.ok(hovers.length > 0);
 
     // ホバー情報にString型が含まれることを確認
     const hoverContent = hovers[0].contents[0];
     if (typeof hoverContent === 'object' && 'value' in hoverContent) {
-      expect(hoverContent.value).toMatch(/String/);
+      assert.ok(hoverContent.value.includes('String'));
     }
   });
 
-  test('Spockテストのwhereブロックでホバーが機能する', async () => {
+  it('Spockテストのwhereブロックでホバーが機能する', async () => {
     const code = `
       import spock.lang.Specification
       
@@ -62,11 +62,11 @@ describe('Hover機能のテスト', () => {
     const position = new vscode.Position(5, 10); // "Math.max"の位置
     const hovers = await getHoverAt(doc, position);
 
-    expect(hovers).toBeDefined();
-    expect(hovers.length).toBeGreaterThan(0);
+    assert.ok(hovers);
+    assert.ok(hovers.length > 0);
   });
 
-  test('Groovyのクロージャでホバーが機能する', async () => {
+  it('Groovyのクロージャでホバーが機能する', async () => {
     const code = `
       def numbers = [1, 2, 3, 4, 5]
       def doubled = numbers.collect { it * 2 }
@@ -78,7 +78,7 @@ describe('Hover機能のテスト', () => {
     const position = new vscode.Position(1, 28); // "collect"の位置
     const hovers = await getHoverAt(doc, position);
 
-    expect(hovers).toBeDefined();
-    expect(hovers.length).toBeGreaterThan(0);
+    assert.ok(hovers);
+    assert.ok(hovers.length > 0);
   });
 });
