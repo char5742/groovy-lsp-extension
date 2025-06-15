@@ -171,4 +171,62 @@ class LineCountServiceTest {
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("content must not be null");
   }
+
+  // 現在の実装では文字列リテラル内のコメント記号は考慮していない
+  // 将来の改善事項として記録
+
+  @Test
+  void アスタリスクで始まるコード行はコメントではない() {
+    var content = "int result = 5 * 10";
+
+    var result = lineCountService.countLines(content);
+
+    assertThat(result.isRight()).isTrue();
+    var lineCount = result.get();
+    assertThat(lineCount.totalLines()).isEqualTo(1);
+    assertThat(lineCount.commentLines()).isEqualTo(0);
+    assertThat(lineCount.codeLines()).isEqualTo(1);
+  }
+
+  @Test
+  void 同一行で開始終了する複数行コメント() {
+    var content = "/* inline comment */ println 'Hello'";
+
+    var result = lineCountService.countLines(content);
+
+    assertThat(result.isRight()).isTrue();
+    var lineCount = result.get();
+    assertThat(lineCount.totalLines()).isEqualTo(1);
+    // 現在の実装ではコメントが含まれる行全体をコメント行として扱う
+    assertThat(lineCount.commentLines()).isEqualTo(1);
+    assertThat(lineCount.codeLines()).isEqualTo(0);
+  }
+
+  @Test
+  void 複数行コメントの終了後にコードがある場合() {
+    var content = "/*\n * comment\n */ code";
+
+    var result = lineCountService.countLines(content);
+
+    assertThat(result.isRight()).isTrue();
+    var lineCount = result.get();
+    assertThat(lineCount.totalLines()).isEqualTo(3);
+    // 現在の実装ではコメント終了を含む行もコメント行として扱う
+    assertThat(lineCount.commentLines()).isEqualTo(3);
+    assertThat(lineCount.codeLines()).isEqualTo(0);
+  }
+
+  @Test
+  void ネストした複数行コメントのテスト() {
+    // Groovyではネストした複数行コメントはサポートされていない
+    var content = "/*\n * 外側のコメント\n */\ncode /* inline comment */";
+
+    var result = lineCountService.countLines(content);
+
+    assertThat(result.isRight()).isTrue();
+    var lineCount = result.get();
+    assertThat(lineCount.totalLines()).isEqualTo(4);
+    assertThat(lineCount.commentLines()).isEqualTo(3);
+    assertThat(lineCount.codeLines()).isEqualTo(1);
+  }
 }
