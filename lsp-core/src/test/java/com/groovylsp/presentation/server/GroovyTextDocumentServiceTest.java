@@ -4,6 +4,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.groovylsp.application.usecase.DiagnosticUseCase;
 import com.groovylsp.application.usecase.TextDocumentSyncUseCase;
 import com.groovylsp.domain.model.TextDocument;
 import com.groovylsp.testing.FastTest;
@@ -27,13 +28,15 @@ class GroovyTextDocumentServiceTest {
 
   private GroovyTextDocumentService service;
   private TextDocumentSyncUseCase syncUseCase;
+  private DiagnosticUseCase diagnosticUseCase;
   private LanguageClient client;
 
   @BeforeEach
   void setUp() {
     syncUseCase = mock(TextDocumentSyncUseCase.class);
+    diagnosticUseCase = mock(DiagnosticUseCase.class);
     client = mock(LanguageClient.class);
-    service = new GroovyTextDocumentService(syncUseCase);
+    service = new GroovyTextDocumentService(syncUseCase, diagnosticUseCase);
     service.connect(client);
   }
 
@@ -45,6 +48,9 @@ class GroovyTextDocumentServiceTest {
     var document = new TextDocument(URI.create(uri), "groovy", 1, "class Test {}");
 
     when(syncUseCase.openDocument(params)).thenReturn(Either.right(document));
+    when(diagnosticUseCase.diagnose(document))
+        .thenReturn(
+            Either.right(com.groovylsp.domain.model.DiagnosticResult.empty(URI.create(uri))));
 
     service.didOpen(params);
 
@@ -75,6 +81,9 @@ class GroovyTextDocumentServiceTest {
     var document = new TextDocument(URI.create(uri), "groovy", 2, "class Test { void test() {} }");
 
     when(syncUseCase.changeDocument(params)).thenReturn(Either.right(document));
+    when(diagnosticUseCase.diagnose(document))
+        .thenReturn(
+            Either.right(com.groovylsp.domain.model.DiagnosticResult.empty(URI.create(uri))));
 
     service.didChange(params);
 

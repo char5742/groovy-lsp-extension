@@ -66,6 +66,7 @@ pre-commit:
 
 pre-push:
   parallel: false
+  follow: true 
   commands:
     java-tests:
       tags: [test, java]
@@ -87,6 +88,7 @@ pre-push:
     typescript-tests:
       tags: [test, typescript]
       root: "vscode-extension/"
+      use_stdin: true
       run: npm run test
       fail_text: |
         TypeScriptテストが失敗しました。すべてのテストが成功してからプッシュしてください。

@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import { glob } from 'glob';
-import Mocha from 'mocha';
+import Mocha = require('mocha');
 
 export function run(): Promise<void> {
   // mochaインスタンスを作成
@@ -13,36 +13,26 @@ export function run(): Promise<void> {
   const testsRoot = path.resolve(__dirname, '.');
 
   return new Promise((resolve, reject) => {
-    glob('**/*.test.js', { cwd: testsRoot }, (err, files) => {
-      if (err) {
-        return reject(err);
-      }
-
-      // .spec.jsファイルも含める
-      glob('**/*.spec.js', { cwd: testsRoot }, (err2, specFiles) => {
-        if (err2) {
-          return reject(err2);
-        }
-
+    // ファイルを非同期で読み込む
+    Promise.all([glob('**/*.test.js', { cwd: testsRoot }), glob('**/*.spec.js', { cwd: testsRoot })])
+      .then(([testFiles, specFiles]) => {
         // ファイルをmochaに追加
-        for (const f of [...files, ...specFiles]) {
+        for (const f of [...testFiles, ...specFiles]) {
           mocha.addFile(path.resolve(testsRoot, f));
         }
 
-        try {
-          // テストを実行
-          mocha.run((failures) => {
-            if (failures > 0) {
-              reject(new Error(`${failures} tests failed.`));
-            } else {
-              resolve();
-            }
-          });
-        } catch (err) {
-          console.error(err);
-          reject(err);
-        }
+        // テストを実行
+        mocha.run((failures) => {
+          if (failures > 0) {
+            reject(new Error(`${failures} tests failed.`));
+          } else {
+            resolve();
+          }
+        });
+      })
+      .catch((err) => {
+        console.error('Error loading test files:', err);
+        reject(err);
       });
-    });
   });
 }
