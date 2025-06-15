@@ -121,4 +121,42 @@ class InMemoryTextDocumentRepositoryTest {
     assertEquals(updated, result.get());
     assertEquals(2, result.get().version());
   }
+
+  @Test
+  void shouldRejectOlderVersion() {
+    var uri = URI.create("file:///test.groovy");
+    var newer = new TextDocument(uri, "groovy", 2, "class Test { void test() {} }");
+    var older = new TextDocument(uri, "groovy", 1, "class Test {}");
+
+    repository.save(newer);
+    var result = repository.save(older);
+
+    assertTrue(result.isLeft());
+    assertTrue(result.getLeft() instanceof TextDocumentRepository.DocumentError.InvalidDocument);
+    assertTrue(result.getLeft().toString().contains("Version conflict"));
+
+    // Verify the newer version is still in the repository
+    var stored = repository.findByUri(uri);
+    assertTrue(stored.isDefined());
+    assertEquals(newer, stored.get());
+  }
+
+  @Test
+  void shouldRejectSameVersion() {
+    var uri = URI.create("file:///test.groovy");
+    var doc1 = new TextDocument(uri, "groovy", 1, "class Test {}");
+    var doc2 = new TextDocument(uri, "groovy", 1, "class Test { void test() {} }");
+
+    repository.save(doc1);
+    var result = repository.save(doc2);
+
+    assertTrue(result.isLeft());
+    assertTrue(result.getLeft() instanceof TextDocumentRepository.DocumentError.InvalidDocument);
+    assertTrue(result.getLeft().toString().contains("Version conflict"));
+
+    // Verify the original document is still in the repository
+    var stored = repository.findByUri(uri);
+    assertTrue(stored.isDefined());
+    assertEquals(doc1, stored.get());
+  }
 }

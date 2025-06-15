@@ -73,8 +73,13 @@ public class TextDocumentSyncUseCase {
     var result = content;
     for (var change : changes) {
       if (change.getRange() == null) {
+        // Full document sync
         result = change.getText();
       } else {
+        // TODO: Implement incremental sync support
+        // This will require calculating offsets from the range (line/character)
+        // and applying the text changes at the correct positions.
+        // For now, we only support full document sync.
         throw new UnsupportedOperationException("Incremental sync not yet supported");
       }
     }

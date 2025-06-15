@@ -32,7 +32,7 @@ public class GroovyTextDocumentService implements TextDocumentService, LanguageC
   public void didOpen(DidOpenTextDocumentParams params) {
     syncUseCase
         .openDocument(params)
-        .peek(document -> logger.debug("Successfully opened document: {}", document.uri()))
+        .peek(document -> logger.info("Successfully opened document: {}", document.uri()))
         .peekLeft(error -> logger.error("Failed to open document: {}", error));
   }
 
@@ -42,7 +42,7 @@ public class GroovyTextDocumentService implements TextDocumentService, LanguageC
         .changeDocument(params)
         .peek(
             document ->
-                logger.debug(
+                logger.info(
                     "Successfully changed document: {} (version: {})",
                     document.uri(),
                     document.version()))
@@ -53,13 +53,13 @@ public class GroovyTextDocumentService implements TextDocumentService, LanguageC
   public void didClose(DidCloseTextDocumentParams params) {
     syncUseCase
         .closeDocument(params)
-        .peek(uri -> logger.debug("Successfully closed document: {}", uri))
+        .peek(uri -> logger.info("Successfully closed document: {}", uri))
         .peekLeft(error -> logger.error("Failed to close document: {}", error));
   }
 
   @Override
   public void didSave(DidSaveTextDocumentParams params) {
-    logger.debug("Document saved: {}", params.getTextDocument().getUri());
+    logger.info("Document saved: {}", params.getTextDocument().getUri());
   }
 
   @Override

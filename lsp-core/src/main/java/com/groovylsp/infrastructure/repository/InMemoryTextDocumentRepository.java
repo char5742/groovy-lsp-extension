@@ -21,6 +21,18 @@ public class InMemoryTextDocumentRepository implements TextDocumentRepository {
 
   @Override
   public Either<DocumentError, TextDocument> save(TextDocument document) {
+    var previous = documents.get(document.uri());
+
+    if (previous != null && previous.version() >= document.version()) {
+      // 古いバージョンは無視してエラーを返す
+      return Either.left(
+          new DocumentError.InvalidDocument(
+              "Version conflict: existing version "
+                  + previous.version()
+                  + " is newer than or equal to provided version "
+                  + document.version()));
+    }
+
     documents.put(document.uri(), document);
     return Either.right(document);
   }
@@ -44,6 +56,10 @@ public class InMemoryTextDocumentRepository implements TextDocumentRepository {
     return documents.values();
   }
 
+  /**
+   * Clears all documents from the repository. WARNING: This method should only be used for testing
+   * purposes. In production, documents should be removed individually using the remove() method.
+   */
   @Override
   public void clear() {
     documents.clear();
