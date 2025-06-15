@@ -32,11 +32,11 @@ public class GroovyLanguageServer implements LanguageServer, LanguageClientAware
 
   @Override
   public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
-    ServerCapabilities capabilities = new ServerCapabilities();
+    var capabilities = new ServerCapabilities();
     // For now, we don't advertise any capabilities
     // These will be added incrementally in future milestones
 
-    InitializeResult result = new InitializeResult(capabilities);
+    var result = new InitializeResult(capabilities);
     return CompletableFuture.completedFuture(result);
   }
 

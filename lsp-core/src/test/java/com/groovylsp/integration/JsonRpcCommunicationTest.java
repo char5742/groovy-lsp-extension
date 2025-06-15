@@ -63,10 +63,10 @@ class JsonRpcCommunicationTest {
     ExecutorService executor = Executors.newSingleThreadExecutor();
     try {
       // Create pipes for communication
-      PipedInputStream clientInput = new PipedInputStream();
-      PipedOutputStream serverOutput = new PipedOutputStream(clientInput);
-      PipedInputStream serverInput = new PipedInputStream();
-      PipedOutputStream clientOutput = new PipedOutputStream(serverInput);
+      var clientInput = new PipedInputStream();
+      var serverOutput = new PipedOutputStream(clientInput);
+      var serverInput = new PipedInputStream();
+      var clientOutput = new PipedOutputStream(serverInput);
 
       // Create server
       ServerComponent component = DaggerServerComponent.create();
@@ -80,7 +80,7 @@ class JsonRpcCommunicationTest {
       server.connect(serverLauncher.getRemoteProxy());
 
       // Create a simple test client that doesn't have telemetry methods
-      TestLanguageClient testClient = new TestLanguageClient();
+      var testClient = new TestLanguageClient();
       Launcher<org.eclipse.lsp4j.services.LanguageServer> clientLauncher =
           LSPLauncher.createClientLauncher(testClient, clientInput, clientOutput);
 
@@ -91,7 +91,7 @@ class JsonRpcCommunicationTest {
       org.eclipse.lsp4j.services.LanguageServer remoteServer = clientLauncher.getRemoteProxy();
 
       // Send initialize request
-      InitializeParams params = new InitializeParams();
+      var params = new InitializeParams();
       params.setProcessId(12345);
       InitializeResult result = remoteServer.initialize(params).get();
 

@@ -40,9 +40,9 @@ class LanguageServerIntegrationTest {
   @Timeout(value = 5, unit = TimeUnit.SECONDS)
   void testFullInitializationSequence() throws Exception {
     // Given
-    InitializeParams params = new InitializeParams();
+    var params = new InitializeParams();
     params.setProcessId(12345);
-    WorkspaceFolder workspaceFolder = new WorkspaceFolder();
+    var workspaceFolder = new WorkspaceFolder();
     workspaceFolder.setUri("file:///test/project");
     workspaceFolder.setName("test-project");
     params.setWorkspaceFolders(Arrays.asList(workspaceFolder));
@@ -56,7 +56,7 @@ class LanguageServerIntegrationTest {
     assertNotNull(initResult.getCapabilities());
 
     // When - Send initialized notification
-    InitializedParams initializedParams = new InitializedParams();
+    var initializedParams = new InitializedParams();
     server.initialized(initializedParams);
 
     // When - Shutdown
@@ -71,7 +71,7 @@ class LanguageServerIntegrationTest {
   @IntegrationTest
   void testServerCapabilities() throws Exception {
     // Given
-    InitializeParams params = new InitializeParams();
+    var params = new InitializeParams();
 
     // When
     InitializeResult result = server.initialize(params).get();
@@ -86,9 +86,9 @@ class LanguageServerIntegrationTest {
   @IntegrationTest
   void testMultipleInitializationRequests() throws Exception {
     // Given
-    InitializeParams params1 = new InitializeParams();
+    var params1 = new InitializeParams();
     params1.setProcessId(1);
-    InitializeParams params2 = new InitializeParams();
+    var params2 = new InitializeParams();
     params2.setProcessId(2);
 
     // When

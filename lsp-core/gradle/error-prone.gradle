@@ -18,6 +18,7 @@ tasks.withType(JavaCompile).configureEach {
             "RemoveUnusedImports",
             "WildcardImport",
             "BadImport",
+            "Varifier",
             
             // 等価性・比較関連
             "ReferenceEquality",

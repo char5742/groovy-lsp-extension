@@ -28,7 +28,7 @@ class GroovyLanguageServerTest {
   @FastTest
   void testInitialize() throws Exception {
     // Given
-    InitializeParams params = new InitializeParams();
+    var params = new InitializeParams();
 
     // When
     CompletableFuture<InitializeResult> future = server.initialize(params);
@@ -43,7 +43,7 @@ class GroovyLanguageServerTest {
   @FastTest
   void testInitialized() {
     // Given
-    InitializedParams params = new InitializedParams();
+    var params = new InitializedParams();
 
     // When/Then - Should not throw exception
     server.initialized(params);
