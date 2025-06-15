@@ -90,7 +90,7 @@ pre-push:
       run: bun run test:integration
       fail_text: |
         TypeScriptテストが失敗しました。すべてのテストが成功してからプッシュしてください。
-        'bun test' を実行して失敗したテストを確認
+        'bun run test:integration' を実行して失敗したテストを確認
         根本原因から対応して短絡的な修正は避けてください
     
     coverage-check:
