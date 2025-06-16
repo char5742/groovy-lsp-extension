@@ -1,12 +1,14 @@
 package com.groovylsp.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.groovylsp.domain.model.DiagnosticItem;
 import com.groovylsp.domain.model.LineCountResult;
 import com.groovylsp.domain.model.TextDocument;
+import com.groovylsp.domain.service.BracketValidationService;
 import com.groovylsp.domain.service.LineCountService;
 import com.groovylsp.testing.FastTest;
 import io.vavr.control.Either;
@@ -18,13 +20,20 @@ import org.junit.jupiter.api.Test;
 class DiagnosticUseCaseTest {
 
   private LineCountService lineCountService;
+  private BracketValidationService bracketValidationService;
 
   private DiagnosticUseCase diagnosticUseCase;
 
   @BeforeEach
   void setUp() {
     lineCountService = mock(LineCountService.class);
-    diagnosticUseCase = new DiagnosticUseCase(lineCountService);
+    bracketValidationService = mock(BracketValidationService.class);
+
+    // デフォルトで括弧チェックは空のリストを返すように設定
+    when(bracketValidationService.validate(any()))
+        .thenReturn(Either.right(io.vavr.collection.List.empty()));
+
+    diagnosticUseCase = new DiagnosticUseCase(lineCountService, bracketValidationService);
   }
 
   @Test
