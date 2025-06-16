@@ -2,11 +2,19 @@
 
 ## 概要
 
-- **総テスト数**: 39
-- **単体テスト**: 8
+- **総テスト数**: 43
+- **単体テスト**: 12
 - **E2Eテスト**: 31
 
 ## 単体テスト
+
+### DocumentSymbol Test Suite
+*ファイル: src/test/suite/documentSymbol.test.ts*
+
+- Should provide document symbols for classes and methods @core @document-symbol [core, document]
+- Should provide document symbols for fields and properties @core @document-symbol [core, document]
+- Should provide document symbols for interfaces @core @document-symbol [core, document]
+- Should handle empty files gracefully @core @document-symbol [core, document]
 
 ### Extension Test Suite
 *ファイル: src/test/suite/extension.test.ts*
