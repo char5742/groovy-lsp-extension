@@ -1,3 +1,11 @@
+// biome-ignore lint/style/noNamespaceImport: テストで必要
+// biome-ignore lint/correctness/noNodejsModules: テストで必要
+import * as fs from 'node:fs/promises';
+// biome-ignore lint/correctness/noNodejsModules: テストで必要
+import { tmpdir } from 'node:os';
+// biome-ignore lint/style/noNamespaceImport: テストで必要
+// biome-ignore lint/correctness/noNodejsModules: テストで必要
+import * as path from 'node:path';
 // biome-ignore lint/style/noNamespaceImport: VSCode APIを使用
 // biome-ignore lint/correctness/noUndeclaredDependencies: VSCodeが提供
 import * as vscode from 'vscode';
@@ -10,15 +18,17 @@ import type { LanguageClient } from 'vscode-languageclient/node';
  * @returns 開いたドキュメント
  */
 export async function openDoc(code: string, lang = 'groovy'): Promise<vscode.TextDocument> {
-  const doc = await vscode.workspace.openTextDocument({
-    content: code,
-    language: lang,
-  });
+  // 一時ファイルを作成
+  const tempDir = tmpdir();
+  const tempFile = path.join(tempDir, `test-${Date.now()}.${lang}`);
+  await fs.writeFile(tempFile, code, 'utf8');
 
+  // ファイルを開く
+  const doc = await vscode.workspace.openTextDocument(tempFile);
   await vscode.window.showTextDocument(doc);
 
   // LSPが初期化されるまで少し待つ
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await new Promise((resolve) => setTimeout(resolve, 500));
 
   return doc;
 }
@@ -28,9 +38,17 @@ export async function openDoc(code: string, lang = 'groovy'): Promise<vscode.Tex
  * @param doc 閉じるドキュメント
  */
 export async function closeDoc(doc: vscode.TextDocument): Promise<void> {
-  const workspaceEdit = new vscode.WorkspaceEdit();
-  workspaceEdit.deleteFile(doc.uri);
-  await vscode.workspace.applyEdit(workspaceEdit);
+  // エディタを閉じる
+  await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+
+  // ファイルが存在する場合は削除
+  if (doc.uri.scheme === 'file') {
+    try {
+      await fs.unlink(doc.uri.fsPath);
+    } catch (_error) {
+      // ファイルが既に削除されている場合は無視
+    }
+  }
 }
 
 /**

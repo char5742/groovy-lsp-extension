@@ -28,6 +28,9 @@ export async function runTestSuite(options: TestRunnerOptions): Promise<void> {
     // テストスクリプトへのパス
     const extensionTestsPath = path.resolve(__dirname, testSuitePath);
 
+    // コマンドライン引数を取得して渡す
+    const extraArgs = process.argv.slice(2);
+
     // テスト実行オプション
     const runOptions = {
       extensionDevelopmentPath,
@@ -38,6 +41,7 @@ export async function runTestSuite(options: TestRunnerOptions): Promise<void> {
         '--disable-setuid-sandbox',
         '--disable-extensions',
         '--disable-gpu-sandbox',
+        ...extraArgs, // コマンドライン引数を追加
       ],
     };
 

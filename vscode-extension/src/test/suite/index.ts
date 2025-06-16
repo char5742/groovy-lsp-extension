@@ -5,17 +5,26 @@ import Mocha = require('mocha');
 import * as path from 'node:path';
 
 export async function run(): Promise<void> {
+  // 環境変数からgrepパターンを取得
+  const grepPattern = process.env.MOCHA_GREP || undefined;
+
   // mochaテストを作成
   const mocha = new Mocha({
     ui: 'bdd',
     color: true,
     timeout: 60000,
     bail: false, // エラーがあっても全テストを実行
+    grep: grepPattern, // --grepオプションがあれば設定
+    reporter: 'spec', // 詳細な出力
   });
 
   const testsRoot = path.resolve(__dirname, '..');
   // すべてのテストファイルを検索
-  const files = await glob('**/**.test.js', { cwd: testsRoot });
+  const files = await glob('**/*{.test,.spec}.js', { cwd: testsRoot });
+
+  if (grepPattern) {
+    // grep パターンは mocha に既に設定済み
+  }
 
   // テストスイートにファイルを追加
   for (const f of files) {
@@ -32,14 +41,21 @@ export async function run(): Promise<void> {
       }
     });
 
-    // タイムアウト対策: 30秒でテストを強制終了
+    // タイムアウト対策: 60秒でテストを強制終了
     const timeout = setTimeout(() => {
       runner.abort();
-      resolve();
-    }, 30000);
+      reject(new Error('Test execution timeout after 60 seconds'));
+    }, 60000);
 
     runner.on('end', () => {
       clearTimeout(timeout);
+    });
+
+    // 各テストのタイムアウトエラーをキャッチ
+    runner.on('fail', (_test, err) => {
+      if (err.message?.includes('timeout')) {
+        // タイムアウトエラーはすでにログに記録されている
+      }
     });
   });
 }

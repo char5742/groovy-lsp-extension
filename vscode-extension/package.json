@@ -7,7 +7,7 @@
   "engines": {
     "vscode": "^1.75.0"
   },
-  "categories": ["Programming Languages"],
+  "categories": ["Prdogramming Languages"],
   "keywords": ["groovy", "spock", "language-server", "lsp"],
   "activationEvents": ["onLanguage:groovy"],
   "main": "./out/extension.js",
@@ -31,7 +31,19 @@
           "description": "Traces the communication between VS Code and the language server."
         }
       }
-    }
+    },
+    "commands": [
+      {
+        "command": "groovy-lsp.restartServer",
+        "title": "Groovy: Restart Language Server",
+        "category": "Groovy"
+      },
+      {
+        "command": "groovy-lsp.showOutputChannel",
+        "title": "Groovy: Show Output Channel",
+        "category": "Groovy"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -40,9 +52,10 @@
     "lint": "biome check ./src",
     "lint:fix": "biome check --write ./src",
     "format": "biome format --write ./src",
-    "test": "xvfb-run -a node ./out/test/runTest.js",
+    "test": "npm run compile && tsc && xvfb-run -a node ./out/test/runTest.js",
+    "test:grep": "npm run compile && tsc && MOCHA_GREP=\"$GREP\" xvfb-run -a node ./out/test/runTest.js",
     "test:scenarios": "npx ts-node scripts/generate-test-scenarios.ts",
-    "coverage": "c8 --check-coverage --lines 80 --functions 80 --branches 80 npm test"
+    "coverage": "c8 --check-coverage --lines 80 --functions 80 --branches 80 npm run test"
   },
   "license": "MIT",
   "devDependencies": {
