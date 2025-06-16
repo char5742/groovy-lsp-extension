@@ -55,8 +55,10 @@ pre-commit:
     generate-scenarios:
       tags: [test, typescript]
       root: "vscode-extension/"
-      glob: "{src/test/**/*.{test,spec}.ts,scripts/generate-test-scenarios.ts}"
-      run: npm run test:scenarios
+      glob: 
+        - "vscode-extension/src/test/**/*.{test,spec}.ts"
+        - "vscode-extension/scripts/generate-test-scenarios.ts"
+      run: npm run test:scenarios  && git add src/test/SCENARIOS.md
       stage_fixed: true
       skip:
         - merge
