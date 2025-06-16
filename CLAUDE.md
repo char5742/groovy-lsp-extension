@@ -6,7 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Groovy LSP ExtensionはGroovy言語のLanguage Server Protocol (LSP)実装で、特にSpockテストフレームワークのサポートに重点を置いています。モノレポ構成でLSPコア（Java）とVSCode拡張機能（TypeScript）を含みます。
 
-
 ## アーキテクチャ
 
 ### LSPコア（Java）
@@ -18,9 +17,13 @@ Groovy LSP ExtensionはGroovy言語のLanguage Server Protocol (LSP)実装で、
 
 ### VSCode拡張機能（TypeScript）
 - **言語**: TypeScript（strictモード有効）
+- **Node.js**: 18以上が必要
 - **非同期処理**: async/awaitパターンを使用（コールバック禁止）
 - **ビルドツール**: esbuild
 - **リンター/フォーマッター**: Biome
+
+### サポートファイル拡張子
+- `.groovy`, `.gradle`, `.gvy`, `.gy`, `.gsh`
 
 ## ビルド・テストコマンド
 
@@ -34,6 +37,7 @@ cd lsp-core
 ./gradlew check              # 全静的解析実行
 ./gradlew spotlessApply      # コード自動フォーマット
 ./gradlew shadowJar          # 実行可能JARビルド
+./gradlew run                # LSPサーバーを標準I/Oモードで起動
 ```
 
 ### VSCode拡張機能
@@ -41,8 +45,10 @@ cd lsp-core
 cd vscode-extension
 npm install                  # 依存関係インストール
 npm run compile              # TypeScriptビルド
+npm run watch                # 変更を監視して再コンパイル
 npm run test                 # テスト実行（統合テスト）
 npm run test -- --grep "test name"  # 単一テスト実行
+npm run test:grep            # GREP環境変数で特定のテストを実行（例: GREP="括弧" npm run test:grep）
 npm run coverage             # カバレッジレポート生成
 npm run lint                 # Biomeチェック実行
 npm run lint:fix             # Biome自動修正
@@ -103,7 +109,34 @@ vscode-extension/
 ## 開発作業ガイドライン
 
 - 作業が完了した際は、作業範囲のテストを実行し成果物に問題がないことを必ず確認してください。
+- VSCode拡張機能のデバッグ時はF5キーで新しいVSCodeウィンドウを起動し、`.groovy`ファイルを開いて拡張機能を有効化してください。
+- LSPサーバーとVSCode拡張機能の統合テスト前に、必ず`lsp-core/`で`./gradlew shadowJar`を実行してください。
 
 ## 外部ツール設定
 
 - **Biome**: biome-ignoreを禁止します
+
+## デバッグ・トラブルシューティング
+
+### VSCode拡張機能の接続確認
+1. VSCodeの出力パネルを開く（表示 → 出力）
+2. ドロップダウンから「Groovy Language Server」を選択
+3. 以下のメッセージが表示されることを確認:
+   - "Groovy Language Server extension is activating..."
+   - "Language client state changed: stopped -> starting"
+   - "Groovy Language Server started successfully"
+
+### LSPサーバーの手動テスト
+標準入力にJSON-RPCメッセージを送信してテスト可能。初期化リクエストの例:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "processId": null,
+    "capabilities": {},
+    "rootUri": "file:///path/to/workspace"
+  }
+}
+```

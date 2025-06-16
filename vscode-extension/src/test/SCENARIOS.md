@@ -2,9 +2,9 @@
 
 ## 概要
 
-- **総テスト数**: 43
+- **総テスト数**: 31
 - **単体テスト**: 8
-- **統合テスト**: 35
+- **統合テスト**: 23
 - **E2Eテスト**: 0
 
 ## 単体テスト
@@ -54,9 +54,9 @@
 ### 診断機能のテスト
 *ファイル: src/test/integration/diagnostics.spec.ts*
 
-- 固定メッセージ「Hello from Groovy LSP」が表示される (issue #5)
-- ファイル変更時も固定メッセージが維持される
-- 空のGroovyファイルでも固定メッセージが表示される
+- 行カウント情報が表示される
+- ファイル変更時も行カウント情報が更新される
+- 空のGroovyファイルでも行カウント情報が表示される
 
 ### Document Synchronization Test Suite
 *ファイル: src/test/integration/document-sync.test.ts*
@@ -69,32 +69,4 @@
 - Groovyファイルに対してのみ診断が実行される
 - Gradleファイルに対して診断が実行される
 - Gradle Kotlinファイルに対して診断が実行される
-
-### Hover機能のテスト
-*ファイル: src/test/integration/hover.spec.ts*
-
-- メソッド名にホバーすると型情報が表示される
-- Spockテストのwhereブロックでホバーが機能する
-- Groovyのクロージャでホバーが機能する
-
-### 字句解析の統合テスト
-*ファイル: src/test/integration/lexical-analysis.test.ts*
-
-- キーワードの字句解析が正しく動作する
-- 文字列リテラルの字句解析が正しく動作する
-- 数値リテラルの字句解析が正しく動作する
-- 複雑なGroovyコードの字句解析が正しく動作する
-- コメントの字句解析が正しく動作する
-- 演算子と区切り文字の字句解析が正しく動作する
-
-### LSP Connection Test Suite
-*ファイル: src/test/integration/lsp-connection.test.ts*
-
-- LSP server should respond to initialize request
-
-### LSP Debug Mode Test Suite
-*ファイル: src/test/integration/lsp-debug-mode.test.ts*
-
-- LSP server should respond correctly in debug mode with quiet flag
-- LSP server debug output should not interfere with protocol
 
