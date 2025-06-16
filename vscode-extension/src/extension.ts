@@ -81,6 +81,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
     throw error;
   }
 
+  // コマンドを登録
+  const restartCommand = vscode.commands.registerCommand('groovy-lsp.restartServer', async () => {
+    outputChannel.appendLine('Restarting Groovy Language Server...');
+    if (client) {
+      await client.restart();
+      outputChannel.appendLine('Groovy Language Server restarted successfully');
+      vscode.window.showInformationMessage('Groovy Language Server restarted');
+    }
+  });
+
+  const showOutputCommand = vscode.commands.registerCommand('groovy-lsp.showOutputChannel', () => {
+    outputChannel.show();
+  });
+
+  context.subscriptions.push(restartCommand, showOutputCommand);
+
   return { client };
 }
 

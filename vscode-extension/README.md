@@ -57,6 +57,28 @@ Groovyファイルを開くと、拡張機能が自動的にLSPサーバーを�
 - `npm run lint` - Biomeの実行
 - `npm run lint:fix` - Biomeの自動修正付き実行
 - `npm run test` - 統合テストの実行
+- `npm run test:grep` - 特定のテストのみを実行
+
+### テストの実行
+
+#### すべてのテストを実行
+```bash
+npm run test
+```
+
+#### 特定のテストのみを実行
+環境変数`GREP`を使用して、テスト名やdescribeブロック名でフィルタリングできます：
+
+```bash
+# 特定のテスト名で実行
+GREP="正しい括弧のペアではエラーが表示されない" npm run test:grep
+
+# describeブロック名で実行
+GREP="括弧の対応チェック機能のテスト" npm run test:grep
+
+# 部分一致で実行
+GREP="括弧" npm run test:grep
+```
 
 ### 設定
 

@@ -30,6 +30,16 @@ async function waitForDiagnostics(doc: vscode.TextDocument, expectedCount?: numb
 describe('括弧の対応チェック機能のテスト', () => {
   let doc: vscode.TextDocument;
 
+  before(async () => {
+    // 拡張機能が正しくアクティベートされているか確認
+    const extension = vscode.extensions.getExtension('groovy-lsp.groovy-lsp');
+    if (extension && !extension.isActive) {
+      await extension.activate();
+    }
+    // LSPサーバーが完全に起動するまで待つ
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+  });
+
   afterEach(async () => {
     if (doc) {
       await closeDoc(doc);
@@ -53,15 +63,23 @@ describe('括弧の対応チェック機能のテスト', () => {
     `;
 
     doc = await openDoc(code, 'groovy');
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    console.log('ドキュメントURI:', doc.uri.toString());
 
-    const diagnostics = await waitForDiagnostics(doc);
-    const bracketErrors = diagnostics.filter(
-      (d) =>
-        d.message.includes('括弧') ||
-        d.message.toLowerCase().includes('bracket') ||
-        d.message.toLowerCase().includes('parenthes'),
-    );
+    // 診断が完全に完了するまで待つ
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
+    const diagnostics = vscode.languages.getDiagnostics(doc.uri);
+    console.log('診断数:', diagnostics.length);
+    diagnostics.forEach((d, i) => {
+      console.log(`診断[${i}]:`, {
+        message: d.message,
+        source: d.source,
+        severity: d.severity,
+        range: `${d.range.start.line}:${d.range.start.character}-${d.range.end.line}:${d.range.end.character}`,
+      });
+    });
+
+    const bracketErrors = diagnostics.filter((d) => d.source === 'groovy-lsp-bracket-validation');
 
     assert.strictEqual(bracketErrors.length, 0, '正しい括弧のペアではエラーが表示されないはずです');
   });

@@ -5,10 +5,8 @@ import Mocha = require('mocha');
 import * as path from 'node:path';
 
 export async function run(): Promise<void> {
-  // コマンドライン引数を取得
-  const args = process.argv;
-  const grepIndex = args.indexOf('--grep');
-  const grepPattern = grepIndex !== -1 && args[grepIndex + 1] ? args[grepIndex + 1] : undefined;
+  // 環境変数からgrepパターンを取得
+  const grepPattern = process.env.MOCHA_GREP || undefined;
 
   // mochaテストを作成
   const mocha = new Mocha({
@@ -17,6 +15,7 @@ export async function run(): Promise<void> {
     timeout: 60000,
     bail: false, // エラーがあっても全テストを実行
     grep: grepPattern, // --grepオプションがあれば設定
+    reporter: 'spec', // 詳細な出力
   });
 
   const testsRoot = path.resolve(__dirname, '..');
@@ -25,6 +24,10 @@ export async function run(): Promise<void> {
 
   console.log(`Found test files: ${files.length}`);
   console.log('Test files:', files);
+
+  if (grepPattern) {
+    console.log(`Running tests matching pattern: ${grepPattern}`);
+  }
 
   // テストスイートにファイルを追加
   for (const f of files) {
@@ -43,12 +46,20 @@ export async function run(): Promise<void> {
 
     // タイムアウト対策: 60秒でテストを強制終了
     const timeout = setTimeout(() => {
+      console.error('テストがタイムアウトしました (60秒)');
       runner.abort();
-      resolve();
+      reject(new Error('Test execution timeout after 60 seconds'));
     }, 60000);
 
     runner.on('end', () => {
       clearTimeout(timeout);
+    });
+
+    // 各テストのタイムアウトエラーをキャッチ
+    runner.on('fail', (test, err) => {
+      if (err.message?.includes('timeout')) {
+        console.error(`テストタイムアウト: ${test.fullTitle()}`);
+      }
     });
   });
 }

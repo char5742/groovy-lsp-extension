@@ -4,28 +4,20 @@ import * as assert from 'node:assert/strict';
 // biome-ignore lint/style/noNamespaceImport: VSCode APIを使用
 // biome-ignore lint/correctness/noUndeclaredDependencies: VSCodeが提供
 import * as vscode from 'vscode';
-import { closeDoc, getLanguageClient, openDoc } from '../test-utils/lsp';
-
-// 診断を待つラッパー関数
-async function waitForDiagnostics(doc: vscode.TextDocument): Promise<vscode.Diagnostic[]> {
-  // 診断が更新されるまで待つ（最大10秒）
-  const maxWaitTime = 10000;
-  const checkInterval = 100;
-  let totalWaitTime = 0;
-
-  while (totalWaitTime < maxWaitTime) {
-    const diagnostics = vscode.languages.getDiagnostics(doc.uri);
-    if (diagnostics.length > 0) {
-      return diagnostics;
-    }
-    await new Promise((resolve) => setTimeout(resolve, checkInterval));
-    totalWaitTime += checkInterval;
-  }
-  return [];
-}
+import { closeDoc, openDoc } from '../test-utils/lsp';
 
 describe('診断機能のテスト', () => {
   let doc: vscode.TextDocument;
+
+  before(async () => {
+    // 拡張機能が正しくアクティベートされているか確認
+    const extension = vscode.extensions.getExtension('groovy-lsp.groovy-lsp');
+    if (extension && !extension.isActive) {
+      await extension.activate();
+    }
+    // LSPサーバーが完全に起動するまで待つ
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+  });
 
   afterEach(async () => {
     if (doc) {
@@ -33,21 +25,7 @@ describe('診断機能のテスト', () => {
     }
   });
 
-  it('固定メッセージ「Hello from Groovy LSP」が表示される (issue #5)', async () => {
-    // 拡張機能が正しくアクティベートされているか確認
-    const extension = vscode.extensions.getExtension('groovy-lsp.groovy-lsp');
-
-    if (extension && !extension.isActive) {
-      await extension.activate();
-    }
-
-    // LSPクライアントの確認
-    const client = await getLanguageClient();
-
-    if (client) {
-      // クライアントが利用可能であることを確認
-    }
-
+  it('行カウント情報が表示される', async () => {
     const code = `
       class Example {
         def greet() {
@@ -57,37 +35,46 @@ describe('診断機能のテスト', () => {
     `;
 
     doc = await openDoc(code, 'groovy');
+    console.log('ドキュメントURI:', doc.uri.toString());
 
-    // 少し待機してからテスト
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // 診断が完全に完了するまで待つ
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
-    const diagnostics = await waitForDiagnostics(doc);
+    const diagnostics = vscode.languages.getDiagnostics(doc.uri);
+    console.log('診断数:', diagnostics.length);
+    diagnostics.forEach((d, i) => {
+      console.log(`診断[${i}]:`, {
+        message: d.message,
+        source: d.source,
+        severity: d.severity,
+        range: `${d.range.start.line}:${d.range.start.character}-${d.range.end.line}:${d.range.end.character}`,
+      });
+    });
 
-    // 診断メッセージが存在することを確認
-    assert.ok(diagnostics.length > 0, '診断メッセージが存在する必要があります');
-
-    // 固定メッセージの内容を確認
-    const helloDiagnostic = diagnostics.find((d) => d.message === 'Hello from Groovy LSP');
-    assert.ok(helloDiagnostic, '「Hello from Groovy LSP」メッセージが見つかりません');
+    // 行カウント情報のメッセージを確認
+    const lineCountDiagnostic = diagnostics.find((d) => d.source === 'groovy-lsp-line-count');
+    assert.ok(lineCountDiagnostic, '行カウント情報メッセージが見つかりません');
 
     // メッセージの詳細を確認
+    assert.ok(lineCountDiagnostic.message.includes('総行数'), 'メッセージに総行数が含まれていません');
     assert.strictEqual(
-      helloDiagnostic.severity,
+      lineCountDiagnostic.severity,
       vscode.DiagnosticSeverity.Information,
       'INFORMATIONレベルである必要があります',
     );
-    assert.strictEqual(helloDiagnostic.range.start.line, 0, '開始行は0である必要があります');
-    assert.strictEqual(helloDiagnostic.range.start.character, 0, '開始列は0である必要があります');
-    assert.strictEqual(helloDiagnostic.source, 'groovy-lsp', 'ソースはgroovy-lspである必要があります');
+    assert.strictEqual(lineCountDiagnostic.range.start.line, 0, '開始行は0である必要があります');
+    assert.strictEqual(lineCountDiagnostic.range.start.character, 0, '開始列は0である必要があります');
   });
 
-  it('ファイル変更時も固定メッセージが維持される', async () => {
+  it('ファイル変更時も行カウント情報が更新される', async () => {
     // 初期コード
     doc = await openDoc('// empty file', 'groovy');
-    let diagnostics = await waitForDiagnostics(doc);
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    let diagnostics = vscode.languages.getDiagnostics(doc.uri);
     assert.ok(
-      diagnostics.some((d) => d.message === 'Hello from Groovy LSP'),
-      '初期状態でメッセージが存在する必要があります',
+      diagnostics.some((d) => d.source === 'groovy-lsp-line-count'),
+      '初期状態で行カウント情報が存在する必要があります',
     );
 
     // ファイルを編集
@@ -96,23 +83,25 @@ describe('診断機能のテスト', () => {
     await vscode.workspace.applyEdit(edit);
 
     // 診断メッセージが更新されるまで待機
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    diagnostics = await waitForDiagnostics(doc);
+    diagnostics = vscode.languages.getDiagnostics(doc.uri);
     assert.ok(
-      diagnostics.some((d) => d.message === 'Hello from Groovy LSP'),
-      '編集後もメッセージが存在する必要があります',
+      diagnostics.some((d) => d.source === 'groovy-lsp-line-count'),
+      '編集後も行カウント情報が存在する必要があります',
     );
   });
 
-  it('空のGroovyファイルでも固定メッセージが表示される', async () => {
+  it('空のGroovyファイルでも行カウント情報が表示される', async () => {
     doc = await openDoc('', 'groovy');
-    const diagnostics = await waitForDiagnostics(doc);
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    const diagnostics = vscode.languages.getDiagnostics(doc.uri);
 
     assert.ok(diagnostics.length > 0, '空のファイルでも診断メッセージが存在する必要があります');
     assert.ok(
-      diagnostics.some((d) => d.message === 'Hello from Groovy LSP'),
-      '固定メッセージが存在する必要があります',
+      diagnostics.some((d) => d.source === 'groovy-lsp-line-count'),
+      '行カウント情報が存在する必要があります',
     );
   });
 });

@@ -27,7 +27,7 @@ describe('Groovyファイル判定の統合テスト', () => {
 
   it('Groovyファイルに対してのみ診断が実行される', async () => {
     // Groovyファイルを開く
-    const groovyPath = path.join(__dirname, '../../test-fixtures/Test.groovy');
+    const groovyPath = path.join(__dirname, '../../../test-fixtures/Test.groovy');
     const groovyDoc = await vscode.workspace.openTextDocument(groovyPath);
     await vscode.window.showTextDocument(groovyDoc);
 
@@ -39,7 +39,7 @@ describe('Groovyファイル判定の統合テスト', () => {
     assert.ok(groovyDiagnostics.length > 0, 'Groovyファイルには診断が必要です');
 
     // Javaファイルを開く
-    const javaPath = path.join(__dirname, '../../test-fixtures/Test.java');
+    const javaPath = path.join(__dirname, '../../../test-fixtures/Test.java');
     const javaDoc = await vscode.workspace.openTextDocument(javaPath);
     await vscode.window.showTextDocument(javaDoc);
 
@@ -53,7 +53,7 @@ describe('Groovyファイル判定の統合テスト', () => {
 
   it('Gradleファイルに対して診断が実行される', async () => {
     // build.gradleファイルを開く
-    const gradlePath = path.join(__dirname, '../../test-fixtures/build.gradle');
+    const gradlePath = path.join(__dirname, '../../../test-fixtures/build.gradle');
     const gradleDoc = await vscode.workspace.openTextDocument(gradlePath);
     await vscode.window.showTextDocument(gradleDoc);
 
@@ -67,7 +67,7 @@ describe('Groovyファイル判定の統合テスト', () => {
 
   it('Gradle Kotlinファイルに対して診断が実行される', async () => {
     // settings.gradle.ktsファイルを開く
-    const gradleKtsPath = path.join(__dirname, '../../test-fixtures/settings.gradle.kts');
+    const gradleKtsPath = path.join(__dirname, '../../../test-fixtures/settings.gradle.kts');
     const gradleKtsDoc = await vscode.workspace.openTextDocument(gradleKtsPath);
     await vscode.window.showTextDocument(gradleKtsDoc);
 
