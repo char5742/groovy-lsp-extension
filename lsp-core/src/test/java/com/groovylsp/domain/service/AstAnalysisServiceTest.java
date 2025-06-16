@@ -196,6 +196,34 @@ class AstAnalysisServiceTest {
     }
 
     @Test
+    @DisplayName("パッケージ付きクラスの完全修飾名が正しく生成される")
+    void generateQualifiedNameWithPackage() {
+      // given
+      String sourceCode =
+          """
+                package com.example.test
+
+                class TestClass {
+                    String name
+                }
+                """;
+
+      // when
+      var result = service.analyze("file:///test/TestClass.groovy", sourceCode);
+
+      // then
+      assertThat(result.isRight()).isTrue();
+      var astInfo = result.get();
+
+      assertThat(astInfo.packageName()).isEqualTo("com.example.test");
+      assertThat(astInfo.classes()).hasSize(1);
+
+      var classInfo = astInfo.classes().get(0);
+      assertThat(classInfo.name()).isEqualTo("TestClass");
+      assertThat(classInfo.qualifiedName()).isEqualTo("com.example.test.TestClass");
+    }
+
+    @Test
     @DisplayName("Spockテストメソッドを認識できる")
     void recognizeSpockMethods() {
       // given

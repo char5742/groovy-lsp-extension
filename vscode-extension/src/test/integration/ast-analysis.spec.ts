@@ -1,6 +1,9 @@
-import { ok, strictEqual } from 'node:assert/strict';
+import { strictEqual } from 'node:assert/strict';
 import { DiagnosticSeverity, type TextDocument, extensions, languages } from 'vscode';
 import { closeDoc, openDoc } from '../test-utils/lsp.ts';
+
+// テストで使用する待機時間の定数
+const WAIT_TIME_MS = 3000;
 
 describe('AST解析機能のテスト', () => {
   let doc: TextDocument;
@@ -13,7 +16,7 @@ describe('AST解析機能のテスト', () => {
       await extension.activate();
     }
     // LSPサーバーが完全に起動するまで待つ
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await new Promise((resolve) => setTimeout(resolve, WAIT_TIME_MS));
   });
 
   afterEach(async () => {
@@ -32,18 +35,19 @@ describe('AST解析機能のテスト', () => {
       `;
 
       doc = await openDoc(code, 'groovy');
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, WAIT_TIME_MS));
 
       const diagnostics = languages.getDiagnostics(doc.uri);
       const syntaxErrors = diagnostics.filter(
         (d) => d.source === 'groovy-syntax' && d.severity === DiagnosticSeverity.Error,
       );
 
-      ok(syntaxErrors.length > 0, '構文エラーが検出されるべきです');
-      ok(
+      strictEqual(syntaxErrors.length > 0, true, '構文エラーが検出されるべきです');
+      strictEqual(
         syntaxErrors.some(
           (e) => e.message.toLowerCase().includes('unexpected') || e.message.toLowerCase().includes('missing'),
         ),
+        true,
         'エラーメッセージに構文エラーの詳細が含まれるべきです',
       );
     });
@@ -60,14 +64,14 @@ describe('AST解析機能のテスト', () => {
       `;
 
       doc = await openDoc(code, 'groovy');
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, WAIT_TIME_MS));
 
       const diagnostics = languages.getDiagnostics(doc.uri);
       const syntaxErrors = diagnostics.filter(
         (d) => d.source === 'groovy-syntax' && d.severity === DiagnosticSeverity.Error,
       );
 
-      ok(syntaxErrors.length > 0, '不正なインポート文に対してエラーが検出されるべきです');
+      strictEqual(syntaxErrors.length > 0, true, '不正なインポート文に対してエラーが検出されるべきです');
     });
 
     it('正しい構文の場合、構文エラーが検出されない', async () => {
@@ -87,7 +91,7 @@ describe('AST解析機能のテスト', () => {
       `;
 
       doc = await openDoc(code, 'groovy');
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, WAIT_TIME_MS));
 
       const diagnostics = languages.getDiagnostics(doc.uri);
       const syntaxErrors = diagnostics.filter(
@@ -117,7 +121,7 @@ describe('AST解析機能のテスト', () => {
       `;
 
       doc = await openDoc(code, 'groovy');
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, WAIT_TIME_MS));
 
       const diagnostics = languages.getDiagnostics(doc.uri);
 
@@ -129,7 +133,7 @@ describe('AST解析機能のテスト', () => {
 
       // 行カウント情報が存在することで、AST解析が成功したことを間接的に確認
       const lineCountDiagnostic = diagnostics.find((d) => d.source === 'groovy-lsp-line-count');
-      ok(lineCountDiagnostic, 'AST解析が成功し、診断情報が生成されるべきです');
+      strictEqual(lineCountDiagnostic !== undefined, true, 'AST解析が成功し、診断情報が生成されるべきです');
     });
   });
 
@@ -158,7 +162,7 @@ describe('AST解析機能のテスト', () => {
       `;
 
       doc = await openDoc(code, 'groovy');
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, WAIT_TIME_MS));
 
       const diagnostics = languages.getDiagnostics(doc.uri);
 
@@ -192,7 +196,7 @@ describe('AST解析機能のテスト', () => {
       `;
 
       doc = await openDoc(code, 'groovy');
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, WAIT_TIME_MS));
 
       const diagnostics = languages.getDiagnostics(doc.uri);
 
@@ -233,7 +237,7 @@ describe('AST解析機能のテスト', () => {
       `;
 
       doc = await openDoc(code, 'groovy');
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, WAIT_TIME_MS));
 
       const diagnostics = languages.getDiagnostics(doc.uri);
 
@@ -277,7 +281,7 @@ describe('AST解析機能のテスト', () => {
       `;
 
       doc = await openDoc(code, 'groovy');
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, WAIT_TIME_MS));
 
       const diagnostics = languages.getDiagnostics(doc.uri);
 

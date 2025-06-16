@@ -88,7 +88,7 @@ public class AstAnalysisService {
     // クラス情報を変換
     List<ClassInfo> classes = new ArrayList<>();
     for (ClassNode classNode : parseResult.getClasses()) {
-      ClassInfo classInfo = convertClassNode(classNode);
+      ClassInfo classInfo = convertClassNode(classNode, packageName);
       if (classInfo != null) {
         classes.add(classInfo);
       }
@@ -105,7 +105,7 @@ public class AstAnalysisService {
   }
 
   /** ClassNodeをClassInfoに変換 */
-  private @Nullable ClassInfo convertClassNode(ClassNode classNode) {
+  private @Nullable ClassInfo convertClassNode(ClassNode classNode, String packageName) {
     if (classNode == null) {
       return null;
     }
@@ -152,9 +152,15 @@ public class AstAnalysisService {
             .map(ClassNode::getName)
             .collect(Collectors.toList());
 
+    // クラスの単純名を取得（内部クラスの場合も考慮）
+    String simpleName = classNode.getNameWithoutPackage();
+
+    // 完全修飾名を生成
+    String qualifiedName = packageName.isEmpty() ? simpleName : packageName + "." + simpleName;
+
     return new ClassInfo(
-        classNode.getName(),
-        classNode.getName(), // 完全修飾名は後で実装
+        simpleName,
+        qualifiedName,
         type,
         position,
         methods,
