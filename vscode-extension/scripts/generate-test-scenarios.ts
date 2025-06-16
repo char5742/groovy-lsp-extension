@@ -1,11 +1,14 @@
-// biome-ignore lint/style/noNamespaceImport: スクリプトファイルでは標準的な書き方
-// biome-ignore lint/correctness/noNodejsModules: Node.jsスクリプト
-import * as fs from 'node:fs';
-// biome-ignore lint/style/noNamespaceImport: スクリプトファイルでは標準的な書き方
-// biome-ignore lint/correctness/noNodejsModules: Node.jsスクリプト
-import * as path from 'node:path';
-// biome-ignore lint/style/noNamespaceImport: TypeScript APIは名前空間での使用が一般的
-import * as ts from 'typescript';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import {
+  type Node,
+  ScriptTarget,
+  createSourceFile,
+  forEachChild,
+  isCallExpression,
+  isIdentifier,
+  isStringLiteral,
+} from 'typescript';
 
 interface TestScenario {
   suite: string;
@@ -19,49 +22,58 @@ class TestScenarioExtractor {
   private scenarios: TestScenario[] = [];
 
   extractFromFile(filePath: string): void {
-    const fileContent = fs.readFileSync(filePath, 'utf-8');
-    const sourceFile = ts.createSourceFile(filePath, fileContent, ts.ScriptTarget.Latest, true);
+    const fileContent = readFileSync(filePath, 'utf-8');
+    const sourceFile = createSourceFile(filePath, fileContent, ScriptTarget.Latest, true);
 
     const category = this.categorizeTest(filePath);
     let currentSuite = '';
 
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: AST走査の特性上、複雑度が高くなる
-    const visit = (node: ts.Node) => {
-      // suite() or describe() calls
-      if (
-        ts.isCallExpression(node) &&
-        ts.isIdentifier(node.expression) &&
-        (node.expression.text === 'suite' || node.expression.text === 'describe')
-      ) {
-        const firstArg = node.arguments[0];
-        if (ts.isStringLiteral(firstArg)) {
-          currentSuite = firstArg.text;
-        }
-      }
+    const visit = (node: Node) => {
+      this.processSuiteNode(node, (text) => {
+        currentSuite = text;
+      });
 
-      // test() or it() calls
-      if (
-        ts.isCallExpression(node) &&
-        ts.isIdentifier(node.expression) &&
-        (node.expression.text === 'test' || node.expression.text === 'it')
-      ) {
-        const firstArg = node.arguments[0];
-        if (ts.isStringLiteral(firstArg)) {
-          const tags = this.extractTags(firstArg.text);
-          this.scenarios.push({
-            suite: currentSuite,
-            test: firstArg.text,
-            file: path.relative(process.cwd(), filePath),
-            category,
-            tags: tags.length > 0 ? tags : undefined,
-          });
-        }
-      }
+      this.processTestNode(node, (text) => {
+        const tags = this.extractTags(text);
+        this.scenarios.push({
+          suite: currentSuite,
+          test: text,
+          file: relative(process.cwd(), filePath),
+          category,
+          tags: tags.length > 0 ? tags : undefined,
+        });
+      });
 
-      ts.forEachChild(node, visit);
+      forEachChild(node, visit);
     };
 
     visit(sourceFile);
+  }
+
+  private processSuiteNode(node: Node, callback: (text: string) => void): void {
+    if (
+      isCallExpression(node) &&
+      isIdentifier(node.expression) &&
+      (node.expression.text === 'suite' || node.expression.text === 'describe')
+    ) {
+      const firstArg = node.arguments[0];
+      if (isStringLiteral(firstArg)) {
+        callback(firstArg.text);
+      }
+    }
+  }
+
+  private processTestNode(node: Node, callback: (text: string) => void): void {
+    if (
+      isCallExpression(node) &&
+      isIdentifier(node.expression) &&
+      (node.expression.text === 'test' || node.expression.text === 'it')
+    ) {
+      const firstArg = node.arguments[0];
+      if (isStringLiteral(firstArg)) {
+        callback(firstArg.text);
+      }
+    }
   }
 
   private categorizeTest(filePath: string): 'unit' | 'integration' | 'e2e' {
@@ -80,25 +92,34 @@ class TestScenarioExtractor {
     return matches ? matches.map((tag) => tag.substring(1)) : [];
   }
 
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: レポート生成の特性上、複雑度が高くなる
   generateMarkdown(): string {
-    let markdown = '# テストシナリオ一覧\n\n';
+    const stats = this.calculateStats();
+    let markdown = this.generateHeader(stats);
+    markdown += this.generateCategorySections();
+    return markdown;
+  }
 
-    // 統計情報
-    const stats = {
+  private calculateStats() {
+    return {
       total: this.scenarios.length,
       unit: this.scenarios.filter((s) => s.category === 'unit').length,
       integration: this.scenarios.filter((s) => s.category === 'integration').length,
       e2e: this.scenarios.filter((s) => s.category === 'e2e').length,
     };
+  }
 
+  private generateHeader(stats: { total: number; unit: number; integration: number; e2e: number }): string {
+    let markdown = '# テストシナリオ一覧\n\n';
     markdown += '## 概要\n\n';
     markdown += `- **総テスト数**: ${stats.total}\n`;
     markdown += `- **単体テスト**: ${stats.unit}\n`;
     markdown += `- **統合テスト**: ${stats.integration}\n`;
     markdown += `- **E2Eテスト**: ${stats.e2e}\n\n`;
+    return markdown;
+  }
 
-    // カテゴリ別セクション
+  private generateCategorySections(): string {
+    let markdown = '';
     const categories: Array<'unit' | 'integration' | 'e2e'> = ['unit', 'integration', 'e2e'];
     const categoryNames = {
       unit: '単体テスト',
@@ -113,34 +134,43 @@ class TestScenarioExtractor {
       }
 
       markdown += `## ${categoryNames[category]}\n\n`;
-
-      // スイートごとにグループ化
-      const suites = new Map<string, TestScenario[]>();
-      for (const scenario of categoryScenarios) {
-        const suiteName = scenario.suite || '(No Suite)';
-        if (!suites.has(suiteName)) {
-          suites.set(suiteName, []);
-        }
-        suites.get(suiteName)?.push(scenario);
-      }
-
-      // 各スイートを出力
-      for (const [suiteName, scenarios] of suites) {
-        markdown += `### ${suiteName}\n`;
-        markdown += `*ファイル: ${scenarios[0].file}*\n\n`;
-
-        for (const scenario of scenarios) {
-          markdown += `- ${scenario.test}`;
-          if (scenario.tags && scenario.tags.length > 0) {
-            markdown += ` [${scenario.tags.join(', ')}]`;
-          }
-          markdown += '\n';
-        }
-        markdown += '\n';
-      }
+      markdown += this.generateSuiteSection(categoryScenarios);
     }
 
     return markdown;
+  }
+
+  private generateSuiteSection(scenarios: TestScenario[]): string {
+    let markdown = '';
+    const suites = this.groupBySuite(scenarios);
+
+    for (const [suiteName, suiteScenarios] of suites) {
+      markdown += `### ${suiteName}\n`;
+      markdown += `*ファイル: ${suiteScenarios[0].file}*\n\n`;
+
+      for (const scenario of suiteScenarios) {
+        markdown += `- ${scenario.test}`;
+        if (scenario.tags && scenario.tags.length > 0) {
+          markdown += ` [${scenario.tags.join(', ')}]`;
+        }
+        markdown += '\n';
+      }
+      markdown += '\n';
+    }
+
+    return markdown;
+  }
+
+  private groupBySuite(scenarios: TestScenario[]): Map<string, TestScenario[]> {
+    const suites = new Map<string, TestScenario[]>();
+    for (const scenario of scenarios) {
+      const suiteName = scenario.suite || '(No Suite)';
+      if (!suites.has(suiteName)) {
+        suites.set(suiteName, []);
+      }
+      suites.get(suiteName)?.push(scenario);
+    }
+    return suites;
   }
 
   generateJson(): string {
@@ -165,49 +195,54 @@ class TestScenarioExtractor {
 // メイン処理
 async function main() {
   const extractor = new TestScenarioExtractor();
-  const testRoot = path.join(__dirname, '../src/test');
-
-  // テストファイルを再帰的に検索
-  function findTestFiles(dir: string): string[] {
-    const files: string[] = [];
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        files.push(...findTestFiles(fullPath));
-      } else if (entry.isFile() && (entry.name.endsWith('.test.ts') || entry.name.endsWith('.spec.ts'))) {
-        files.push(fullPath);
-      }
-    }
-
-    return files;
-  }
+  const testRoot = join(__dirname, '../src/test');
 
   const testFiles = findTestFiles(testRoot);
-  // biome-ignore lint/suspicious/noConsole lint/suspicious/noConsoleLog: 開発スクリプトの進捗表示
-  console.log(`Found ${testFiles.length} test files`);
+  logProgress(`Found ${testFiles.length} test files`);
 
   for (const file of testFiles) {
-    // biome-ignore lint/suspicious/noConsole lint/suspicious/noConsoleLog: 開発スクリプトの進捗表示
-    console.log(`Extracting from: ${file}`);
+    logProgress(`Extracting from: ${file}`);
     extractor.extractFromFile(file);
   }
 
   // 結果を出力
-  const outputDir = path.join(__dirname, '../src/test');
+  const outputDir = join(__dirname, '../src/test');
 
   // Markdown出力
   const markdown = extractor.generateMarkdown();
-  fs.writeFileSync(path.join(outputDir, 'SCENARIOS.md'), markdown);
-  // biome-ignore lint/suspicious/noConsole lint/suspicious/noConsoleLog: 開発スクリプトの進捗表示
-  console.log('Generated: src/test/SCENARIOS.md');
+  writeFileSync(join(outputDir, 'SCENARIOS.md'), markdown);
+  logProgress('Generated: src/test/SCENARIOS.md');
 
   // JSON出力
   const json = extractor.generateJson();
-  fs.writeFileSync(path.join(outputDir, 'scenarios.json'), json);
-  // biome-ignore lint/suspicious/noConsole lint/suspicious/noConsoleLog: 開発スクリプトの進捗表示
-  console.log('Generated: src/test/scenarios.json');
+  writeFileSync(join(outputDir, 'scenarios.json'), json);
+  logProgress('Generated: src/test/scenarios.json');
 }
 
-main().catch(console.error);
+// テストファイルを再帰的に検索
+function findTestFiles(dir: string): string[] {
+  const files: string[] = [];
+  const entries = readdirSync(dir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...findTestFiles(fullPath));
+    } else if (entry.isFile() && (entry.name.endsWith('.test.ts') || entry.name.endsWith('.spec.ts'))) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
+// 進捗表示用のヘルパー関数
+function logProgress(message: string): void {
+  // 開発スクリプトの進捗表示は意図的なもの
+  process.stdout.write(`${message}\n`);
+}
+
+main().catch((error) => {
+  process.stderr.write(`Error: ${error}\n`);
+  process.exit(1);
+});

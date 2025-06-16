@@ -1,8 +1,6 @@
 import { glob } from 'glob';
 import Mocha = require('mocha');
-// biome-ignore lint/style/noNamespaceImport: テストで必要
-// biome-ignore lint/correctness/noNodejsModules: テストで必要
-import * as path from 'node:path';
+import { resolve } from 'node:path';
 
 export async function run(): Promise<void> {
   // 環境変数からgrepパターンを取得
@@ -18,7 +16,7 @@ export async function run(): Promise<void> {
     reporter: 'spec', // 詳細な出力
   });
 
-  const testsRoot = path.resolve(__dirname, '..');
+  const testsRoot = resolve(__dirname, '..');
   // すべてのテストファイルを検索
   const files = await glob('**/*{.test,.spec}.js', { cwd: testsRoot });
 
@@ -28,7 +26,7 @@ export async function run(): Promise<void> {
 
   // テストスイートにファイルを追加
   for (const f of files) {
-    mocha.addFile(path.resolve(testsRoot, f));
+    mocha.addFile(resolve(testsRoot, f));
   }
 
   // mochaテストを実行

@@ -1,11 +1,6 @@
-// biome-ignore lint/style/noNamespaceImport: テストで必要
-// biome-ignore lint/correctness/noNodejsModules: テストで必要
-import * as assert from 'node:assert/strict';
-// biome-ignore lint/correctness/noNodejsModules: テストで必要
+import { ok, strictEqual } from 'node:assert/strict';
 import { type ChildProcess, spawn } from 'node:child_process';
-// biome-ignore lint/style/noNamespaceImport: テストで必要
-// biome-ignore lint/correctness/noNodejsModules: テストで必要
-import * as path from 'node:path';
+import { join } from 'node:path';
 
 // モジュールレベルの定数
 const CONTENT_LENGTH_REGEX = /Content-Length: (\d+)\r\n\r\n/;
@@ -118,7 +113,7 @@ describe('Document Synchronization Test Suite', () => {
   }
 
   beforeEach(() => {
-    const jarPath = path.join(
+    const jarPath = join(
       __dirname,
       '../../../..',
       'lsp-core',
@@ -157,9 +152,9 @@ describe('Document Synchronization Test Suite', () => {
       workspaceFolders: null,
     });
 
-    assert.ok(initResult.result);
+    ok(initResult.result);
     const capabilities = initResult.result as { capabilities: { textDocumentSync?: number } };
-    assert.strictEqual(capabilities.capabilities.textDocumentSync, 1);
+    strictEqual(capabilities.capabilities.textDocumentSync, 1);
 
     // initialized通知を送信
     sendNotification('initialized', {});
@@ -204,6 +199,6 @@ describe('Document Synchronization Test Suite', () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     // すべてのリクエストが正常に完了
-    assert.ok(true);
+    ok(true);
   });
 });
