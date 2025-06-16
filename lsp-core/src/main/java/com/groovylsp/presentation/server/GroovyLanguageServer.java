@@ -37,6 +37,9 @@ public class GroovyLanguageServer implements LanguageServer, LanguageClientAware
     // テキストドキュメント同期機能
     capabilities.setTextDocumentSync(org.eclipse.lsp4j.TextDocumentSyncKind.Full);
 
+    // ドキュメントシンボル機能
+    capabilities.setDocumentSymbolProvider(true);
+
     var result = new InitializeResult(capabilities);
     return CompletableFuture.completedFuture(result);
   }

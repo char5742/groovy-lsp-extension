@@ -1,11 +1,14 @@
 package com.groovylsp.infrastructure.di;
 
 import com.groovylsp.application.usecase.DiagnosticUseCase;
+import com.groovylsp.application.usecase.DocumentSymbolUseCase;
 import com.groovylsp.application.usecase.TextDocumentSyncUseCase;
 import com.groovylsp.domain.repository.TextDocumentRepository;
 import com.groovylsp.domain.service.AstAnalysisService;
 import com.groovylsp.domain.service.BracketValidationService;
 import com.groovylsp.domain.service.LineCountService;
+import com.groovylsp.domain.service.SymbolExtractionService;
+import com.groovylsp.infrastructure.ast.GroovySymbolExtractionService;
 import com.groovylsp.infrastructure.parser.GroovyAstParser;
 import com.groovylsp.infrastructure.repository.InMemoryTextDocumentRepository;
 import com.groovylsp.presentation.server.GroovyTextDocumentService;
@@ -50,9 +53,24 @@ public class ServerModule {
 
   @Provides
   @Singleton
+  public SymbolExtractionService provideSymbolExtractionService(GroovyAstParser parser) {
+    return new GroovySymbolExtractionService(parser);
+  }
+
+  @Provides
+  @Singleton
+  public DocumentSymbolUseCase provideDocumentSymbolUseCase(
+      SymbolExtractionService symbolExtractionService, TextDocumentRepository repository) {
+    return new DocumentSymbolUseCase(symbolExtractionService, repository);
+  }
+
+  @Provides
+  @Singleton
   public GroovyTextDocumentService provideTextDocumentService(
-      TextDocumentSyncUseCase syncUseCase, DiagnosticUseCase diagnosticUseCase) {
-    return new GroovyTextDocumentService(syncUseCase, diagnosticUseCase);
+      TextDocumentSyncUseCase syncUseCase,
+      DiagnosticUseCase diagnosticUseCase,
+      DocumentSymbolUseCase documentSymbolUseCase) {
+    return new GroovyTextDocumentService(syncUseCase, diagnosticUseCase, documentSymbolUseCase);
   }
 
   @Provides
