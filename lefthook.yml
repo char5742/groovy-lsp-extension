@@ -32,7 +32,7 @@ pre-commit:
       tags: [linting, typescript]
       root: "vscode-extension/"
       glob: "*.{js,ts,jsx,tsx}"
-      run: npx biome check --write {staged_files}
+      run: npx biome check --fix --unsafe {staged_files}
       stage_fixed: true
       skip:
         - merge

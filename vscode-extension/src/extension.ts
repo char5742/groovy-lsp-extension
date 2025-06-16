@@ -1,9 +1,5 @@
-// biome-ignore lint/style/noNamespaceImport: VSCode拡張機能では名前空間インポートが標準
-// biome-ignore lint/correctness/noNodejsModules: Node.js環境での実行が前提
-import * as path from 'node:path';
-// biome-ignore lint/style/noNamespaceImport: VSCode APIは名前空間での使用が推奨
-// biome-ignore lint/correctness/noUndeclaredDependencies: vscodeは実行時に提供される
-import * as vscode from 'vscode';
+import { join } from 'node:path';
+import { type ExtensionContext, commands, window, workspace } from 'vscode';
 import {
   LanguageClient,
   type LanguageClientOptions,
@@ -11,16 +7,16 @@ import {
   Trace,
   TransportKind,
 } from 'vscode-languageclient/node';
-import type { ExtensionApi } from './types';
+import type { ExtensionApi } from './types.ts';
 
 let client: LanguageClient | undefined;
 
-export async function activate(context: vscode.ExtensionContext): Promise<ExtensionApi> {
-  const outputChannel = vscode.window.createOutputChannel('Groovy Language Server');
+export async function activate(context: ExtensionContext): Promise<ExtensionApi> {
+  const outputChannel = window.createOutputChannel('Groovy Language Server');
   outputChannel.appendLine('Groovy Language Server extension is activating...');
 
   // LSPサーバーJARファイルのパス
-  const serverJar = path.join(
+  const serverJar = join(
     context.extensionPath,
     '..',
     'lsp-core',
@@ -51,7 +47,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
     ],
     synchronize: {
       configurationSection: 'groovy-lsp',
-      fileEvents: vscode.workspace.createFileSystemWatcher('**/*.{groovy,gradle,gvy,gy,gsh}'),
+      fileEvents: workspace.createFileSystemWatcher('**/*.{groovy,gradle,gvy,gy,gsh}'),
     },
     outputChannel: outputChannel,
     traceOutputChannel: outputChannel,
@@ -61,7 +57,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
   client = new LanguageClient('groovy-lsp', 'Groovy Language Server', serverOptions, clientOptions);
 
   // トレース設定（設定から読み取る）
-  const traceServer = vscode.workspace.getConfiguration('groovy-lsp').get<string>('trace.server', 'off');
+  const traceServer = workspace.getConfiguration('groovy-lsp').get<string>('trace.server', 'off');
   const traceValue =
     traceServer === 'verbose' ? Trace.Verbose : traceServer === 'messages' ? Trace.Messages : Trace.Off;
   await client.setTrace(traceValue);
@@ -77,21 +73,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
     outputChannel.appendLine('Groovy Language Server started successfully');
   } catch (error) {
     outputChannel.appendLine(`Failed to start Groovy Language Server: ${error}`);
-    vscode.window.showErrorMessage(`Failed to start Groovy Language Server: ${error}`);
+    window.showErrorMessage(`Failed to start Groovy Language Server: ${error}`);
     throw error;
   }
 
   // コマンドを登録
-  const restartCommand = vscode.commands.registerCommand('groovy-lsp.restartServer', async () => {
+  const restartCommand = commands.registerCommand('groovy-lsp.restartServer', async () => {
     outputChannel.appendLine('Restarting Groovy Language Server...');
     if (client) {
       await client.restart();
       outputChannel.appendLine('Groovy Language Server restarted successfully');
-      vscode.window.showInformationMessage('Groovy Language Server restarted');
+      window.showInformationMessage('Groovy Language Server restarted');
     }
   });
 
-  const showOutputCommand = vscode.commands.registerCommand('groovy-lsp.showOutputChannel', () => {
+  const showOutputCommand = commands.registerCommand('groovy-lsp.showOutputChannel', () => {
     outputChannel.show();
   });
 

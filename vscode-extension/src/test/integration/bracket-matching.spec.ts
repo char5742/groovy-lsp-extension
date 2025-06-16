@@ -1,19 +1,15 @@
-// biome-ignore lint/style/noNamespaceImport: テストで必要
-// biome-ignore lint/correctness/noNodejsModules: テストで必要
-import * as assert from 'node:assert/strict';
-// biome-ignore lint/style/noNamespaceImport: VSCode APIを使用
-// biome-ignore lint/correctness/noUndeclaredDependencies: VSCodeが提供
-import * as vscode from 'vscode';
-import { closeDoc, openDoc } from '../test-utils/lsp';
+import { ok, strictEqual } from 'node:assert/strict';
+import { type Diagnostic, type TextDocument, extensions, languages } from 'vscode';
+import { closeDoc, openDoc } from '../test-utils/lsp.ts';
 
 // 診断を待つラッパー関数
-async function waitForDiagnostics(doc: vscode.TextDocument, expectedCount?: number): Promise<vscode.Diagnostic[]> {
+async function waitForDiagnostics(doc: TextDocument, expectedCount?: number): Promise<Diagnostic[]> {
   const maxWaitTime = 10000;
   const checkInterval = 100;
   let totalWaitTime = 0;
 
   while (totalWaitTime < maxWaitTime) {
-    const diagnostics = vscode.languages.getDiagnostics(doc.uri);
+    const diagnostics = languages.getDiagnostics(doc.uri);
     if (expectedCount !== undefined) {
       if (diagnostics.length >= expectedCount) {
         return diagnostics;
@@ -24,15 +20,15 @@ async function waitForDiagnostics(doc: vscode.TextDocument, expectedCount?: numb
     await new Promise((resolve) => setTimeout(resolve, checkInterval));
     totalWaitTime += checkInterval;
   }
-  return vscode.languages.getDiagnostics(doc.uri);
+  return languages.getDiagnostics(doc.uri);
 }
 
 describe('括弧の対応チェック機能のテスト', () => {
-  let doc: vscode.TextDocument;
+  let doc: TextDocument;
 
   before(async () => {
     // 拡張機能が正しくアクティベートされているか確認
-    const extension = vscode.extensions.getExtension('groovy-lsp.groovy-lsp');
+    const extension = extensions.getExtension('groovy-lsp.groovy-lsp');
     if (extension && !extension.isActive) {
       await extension.activate();
     }
@@ -67,14 +63,14 @@ describe('括弧の対応チェック機能のテスト', () => {
     // 診断が完全に完了するまで待つ
     await new Promise((resolve) => setTimeout(resolve, 5000));
 
-    const diagnostics = vscode.languages.getDiagnostics(doc.uri);
+    const diagnostics = languages.getDiagnostics(doc.uri);
     diagnostics.forEach((_d, _i) => {
       // 診断情報の詳細ログは必要に応じて追加
     });
 
     const bracketErrors = diagnostics.filter((d) => d.source === 'groovy-lsp-bracket-validation');
 
-    assert.strictEqual(bracketErrors.length, 0, '正しい括弧のペアではエラーが表示されないはずです');
+    strictEqual(bracketErrors.length, 0, '正しい括弧のペアではエラーが表示されないはずです');
   });
 
   it('開き括弧が多い場合にエラーが表示される', async () => {
@@ -101,7 +97,7 @@ describe('括弧の対応チェック機能のテスト', () => {
         d.message.toLowerCase().includes('missing'),
     );
 
-    assert.ok(bracketErrors.length > 0, '開き括弧が多い場合はエラーが表示されるはずです');
+    ok(bracketErrors.length > 0, '開き括弧が多い場合はエラーが表示されるはずです');
   });
 
   it('閉じ括弧が多い場合にエラーが表示される', async () => {
@@ -128,7 +124,7 @@ describe('括弧の対応チェック機能のテスト', () => {
         d.message.toLowerCase().includes('extra'),
     );
 
-    assert.ok(bracketErrors.length > 0, '閉じ括弧が多い場合はエラーが表示されるはずです');
+    ok(bracketErrors.length > 0, '閉じ括弧が多い場合はエラーが表示されるはずです');
   });
 
   it('異なる種類の括弧の不一致でエラーが表示される', async () => {
@@ -155,7 +151,7 @@ describe('括弧の対応チェック機能のテスト', () => {
         d.message.toLowerCase().includes('expected'),
     );
 
-    assert.ok(bracketErrors.length > 0, '異なる種類の括弧の不一致でエラーが表示されるはずです');
+    ok(bracketErrors.length > 0, '異なる種類の括弧の不一致でエラーが表示されるはずです');
   });
 
   it('ネストされた括弧が正しく対応している場合はエラーが表示されない', async () => {
@@ -184,7 +180,7 @@ describe('括弧の対応チェック機能のテスト', () => {
         d.message.toLowerCase().includes('parenthes'),
     );
 
-    assert.strictEqual(bracketErrors.length, 0, 'ネストされた括弧が正しい場合はエラーが表示されないはずです');
+    strictEqual(bracketErrors.length, 0, 'ネストされた括弧が正しい場合はエラーが表示されないはずです');
   });
 
   it('文字列内の括弧は無視される', async () => {
@@ -213,7 +209,7 @@ describe('括弧の対応チェック機能のテスト', () => {
         d.message.toLowerCase().includes('parenthes'),
     );
 
-    assert.strictEqual(bracketErrors.length, 0, '文字列内の括弧は無視されるはずです');
+    strictEqual(bracketErrors.length, 0, '文字列内の括弧は無視されるはずです');
   });
 
   it('コメント内の括弧は無視される', async () => {
@@ -241,7 +237,7 @@ describe('括弧の対応チェック機能のテスト', () => {
         d.message.toLowerCase().includes('parenthes'),
     );
 
-    assert.strictEqual(bracketErrors.length, 0, 'コメント内の括弧は無視されるはずです');
+    strictEqual(bracketErrors.length, 0, 'コメント内の括弧は無視されるはずです');
   });
 
   it('Groovy特有の構文での括弧チェック', async () => {
@@ -279,7 +275,7 @@ describe('括弧の対応チェック機能のテスト', () => {
         d.message.toLowerCase().includes('parenthes'),
     );
 
-    assert.strictEqual(bracketErrors.length, 0, 'Groovy特有の構文でも正しい括弧チェックが行われるはずです');
+    strictEqual(bracketErrors.length, 0, 'Groovy特有の構文でも正しい括弧チェックが行われるはずです');
   });
 
   it('複雑なSpockテストでの括弧チェック', async () => {
@@ -316,6 +312,6 @@ describe('括弧の対応チェック機能のテスト', () => {
         d.message.toLowerCase().includes('parenthes'),
     );
 
-    assert.strictEqual(bracketErrors.length, 0, 'Spockテストの複雑な構文でも括弧チェックが正しく動作するはずです');
+    strictEqual(bracketErrors.length, 0, 'Spockテストの複雑な構文でも括弧チェックが正しく動作するはずです');
   });
 });

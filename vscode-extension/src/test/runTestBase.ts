@@ -1,6 +1,4 @@
-// biome-ignore lint/style/noNamespaceImport: テスト環境では標準的な書き方
-// biome-ignore lint/correctness/noNodejsModules: テスト環境ではNode.jsモジュールが必要
-import * as path from 'node:path';
+import { resolve } from 'node:path';
 import { runTests } from '@vscode/test-electron';
 
 /**
@@ -23,10 +21,10 @@ export async function runTestSuite(options: TestRunnerOptions): Promise<void> {
 
   try {
     // Extension Manifest package.jsonを含むフォルダ
-    const extensionDevelopmentPath = path.resolve(__dirname, '../../');
+    const extensionDevelopmentPath = resolve(__dirname, '../../');
 
     // テストスクリプトへのパス
-    const extensionTestsPath = path.resolve(__dirname, testSuitePath);
+    const extensionTestsPath = resolve(__dirname, testSuitePath);
 
     // コマンドライン引数を取得して渡す
     const extraArgs = process.argv.slice(2);
