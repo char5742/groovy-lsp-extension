@@ -46,7 +46,7 @@ cd vscode-extension
 npm install                  # 依存関係インストール
 npm run compile              # TypeScriptビルド
 npm run watch                # 変更を監視して再コンパイル
-npm run test                 # テスト実行（統合テスト）
+npm run test                 # テスト実行（e2eテスト）
 npm run test -- --grep "test name"  # 単一テスト実行
 npm run test:grep            # GREP環境変数で特定のテストを実行（例: GREP="括弧" npm run test:grep）
 npm run coverage             # カバレッジレポート生成
@@ -58,7 +58,7 @@ npm run format               # Biomeフォーマット実行
 ## 開発ルール
 
 1. **テスト駆動開発**: 機能実装前に必ずテストを作成
-2. **カバレッジ**: 80%以上を維持（単体テスト70%、統合テスト20%、E2E10%）
+2. **カバレッジ**: 80%以上を維持（単体テスト70%、統合テスト20%、e2eテスト10%）
 3. **静的解析**: Error Prone（NullAway含む）、Spotless、ArchUnitを使用
 4. **コミット規約**: Conventional Commits形式を使用
 5. **ブランチ戦略**: `main`（安定版）、`develop`（開発）、`feature/*`、`fix/*`
@@ -86,15 +86,37 @@ vscode-extension/
 ├── src/
 │   ├── client/          # LSPクライアント
 │   ├── commands/        # コマンド実装
-│   └── providers/       # 各種プロバイダー
+│   ├── providers/       # 各種プロバイダー
+│   └── test/
+│       ├── e2e/         # e2eテスト（mocha）
+│       ├── unit/        # 単体テスト（未使用）
+│       └── suite/       # 拡張機能テスト（未使用）
 ```
 
 ## 重要な設計方針
 
 1. **Vavrの使用**: 全てのエラーハンドリングはEitherモナドで実装（例外スローは禁止）
 2. **JSpecify**: ルートレベルで`@NullMarked`を宣言（デフォルトnon-null）
-3. **テスト分類**: `@FastTest`（<100ms）、`@SlowTest`（>100ms）、`@IntegrationTest`を使用
+3. **テスト分類**: Java側では`@FastTest`（<100ms）、`@SlowTest`（>100ms）、`@IntegrationTest`を使用
 4. **非同期処理**: TypeScriptではPromise/async-awaitのみ使用（コールバック禁止）
+
+## テスト戦略
+
+### テストの分類と責務
+1. **単体テスト（Unit Test）**
+   - **実装**: JUnit（Java側のlsp-core）
+   - **対象**: 個々のクラスやメソッドの振る舞い
+   - **カバレッジ目標**: 70%
+
+2. **統合テスト（Integration Test）**
+   - **実装**: JUnit（Java側のlsp-core）
+   - **対象**: 複数のコンポーネント間の連携
+   - **カバレッジ目標**: 20%
+
+3. **e2eテスト（End-to-End Test）**
+   - **実装**: Mocha（TypeScript側のvscode-extension）
+   - **対象**: VSCode拡張機能とLSPサーバー間の実際の通信
+   - **カバレッジ目標**: 10%
 
 ## コーディングガイドライン
 
@@ -110,7 +132,7 @@ vscode-extension/
 
 - 作業が完了した際は、作業範囲のテストを実行し成果物に問題がないことを必ず確認してください。
 - VSCode拡張機能のデバッグ時はF5キーで新しいVSCodeウィンドウを起動し、`.groovy`ファイルを開いて拡張機能を有効化してください。
-- LSPサーバーとVSCode拡張機能の統合テスト前に、必ず`lsp-core/`で`./gradlew shadowJar`を実行してください。
+- LSPサーバーとVSCode拡張機能のe2eテスト前に、必ず`lsp-core/`で`./gradlew shadowJar`を実行してください。
 
 ## 外部ツール設定
 

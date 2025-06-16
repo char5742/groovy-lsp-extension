@@ -14,7 +14,7 @@ interface TestScenario {
   suite: string;
   test: string;
   file: string;
-  category: 'unit' | 'integration' | 'e2e';
+  category: 'unit' | 'e2e';
   tags?: string[];
 }
 
@@ -76,10 +76,7 @@ class TestScenarioExtractor {
     }
   }
 
-  private categorizeTest(filePath: string): 'unit' | 'integration' | 'e2e' {
-    if (filePath.includes('/integration/')) {
-      return 'integration';
-    }
+  private categorizeTest(filePath: string): 'unit' | 'e2e' {
     if (filePath.includes('/e2e/')) {
       return 'e2e';
     }
@@ -103,27 +100,24 @@ class TestScenarioExtractor {
     return {
       total: this.scenarios.length,
       unit: this.scenarios.filter((s) => s.category === 'unit').length,
-      integration: this.scenarios.filter((s) => s.category === 'integration').length,
       e2e: this.scenarios.filter((s) => s.category === 'e2e').length,
     };
   }
 
-  private generateHeader(stats: { total: number; unit: number; integration: number; e2e: number }): string {
+  private generateHeader(stats: { total: number; unit: number; e2e: number }): string {
     let markdown = '# テストシナリオ一覧\n\n';
     markdown += '## 概要\n\n';
     markdown += `- **総テスト数**: ${stats.total}\n`;
     markdown += `- **単体テスト**: ${stats.unit}\n`;
-    markdown += `- **統合テスト**: ${stats.integration}\n`;
     markdown += `- **E2Eテスト**: ${stats.e2e}\n\n`;
     return markdown;
   }
 
   private generateCategorySections(): string {
     let markdown = '';
-    const categories: Array<'unit' | 'integration' | 'e2e'> = ['unit', 'integration', 'e2e'];
+    const categories: Array<'unit' | 'e2e'> = ['unit', 'e2e'];
     const categoryNames = {
       unit: '単体テスト',
-      integration: '統合テスト',
       e2e: 'E2Eテスト',
     };
 
@@ -180,7 +174,6 @@ class TestScenarioExtractor {
           total: this.scenarios.length,
           byCategory: {
             unit: this.scenarios.filter((s) => s.category === 'unit').length,
-            integration: this.scenarios.filter((s) => s.category === 'integration').length,
             e2e: this.scenarios.filter((s) => s.category === 'e2e').length,
           },
         },
@@ -193,7 +186,7 @@ class TestScenarioExtractor {
 }
 
 // メイン処理
-function main() {
+async function main() {
   const extractor = new TestScenarioExtractor();
   const testRoot = join(__dirname, '../src/test');
 
@@ -242,7 +235,7 @@ function logProgress(message: string): void {
   process.stdout.write(`${message}\n`);
 }
 
-main().catch((error) => {
-  process.stderr.write(`Error: ${error}\n`);
+main().catch((error: Error) => {
+  process.stderr.write(`Error: ${error.message}\n`);
   process.exit(1);
 });

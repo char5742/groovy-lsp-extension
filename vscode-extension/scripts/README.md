@@ -25,7 +25,7 @@ npm run test:scenarios
    - test/it名
    - タグ（`@tag`形式）
    - ファイルパス
-   - カテゴリ（unit/integration/e2e）
+   - カテゴリ（unit/e2e）
 
 3. **統計情報**
    - 総テスト数
