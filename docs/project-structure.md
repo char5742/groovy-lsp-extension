@@ -46,9 +46,10 @@ groovy-lsp-extension/
 │   │   ├── commands/                    # コマンド実装
 │   │   ├── providers/                   # 各種プロバイダー
 │   │   └── utils/                       # ユーティリティ
-│   ├── tests/
+│   ├── test/
 │   │   ├── unit/                        # 単体テスト
-│   │   └── integration/                 # 統合テスト
+│   │   ├── e2e/                         # e2eテスト
+│   │   └── suite/                       # テストスイート
 │   └── resources/
 │       ├── icons/                       # アイコン
 │       └── snippets/                    # スニペット
