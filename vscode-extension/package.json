@@ -36,6 +36,8 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "npx esbuild src/extension.ts --bundle --platform=node --outfile=out/extension.js --external:vscode",
+    "compile:test": "tsc",
+    "pretest": "npm run compile && npm run compile:test",
     "watch": "tsc -watch -p ./",
     "lint": "biome check ./src",
     "lint:fix": "biome check --write ./src",
