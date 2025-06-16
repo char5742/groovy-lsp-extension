@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.groovylsp.application.usecase.DiagnosticUseCase;
 import com.groovylsp.domain.model.TextDocument;
+import com.groovylsp.domain.service.AstAnalysisService;
 import com.groovylsp.domain.service.BracketValidationService;
 import com.groovylsp.domain.service.LineCountService;
+import com.groovylsp.infrastructure.parser.GroovyAstParser;
 import com.groovylsp.testing.IntegrationTest;
 import java.net.URI;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,7 +26,10 @@ class DiagnosticIntegrationTest {
   void setUp() {
     lineCountService = new LineCountService();
     bracketValidationService = new BracketValidationService();
-    diagnosticUseCase = new DiagnosticUseCase(lineCountService, bracketValidationService);
+    var parser = new GroovyAstParser();
+    var astAnalysisService = new AstAnalysisService(parser);
+    diagnosticUseCase =
+        new DiagnosticUseCase(lineCountService, bracketValidationService, astAnalysisService);
   }
 
   @Test

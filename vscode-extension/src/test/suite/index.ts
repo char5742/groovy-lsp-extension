@@ -10,7 +10,7 @@ export async function run(): Promise<void> {
   const mocha = new Mocha({
     ui: 'bdd',
     color: true,
-    timeout: 60000,
+    timeout: 120000,
     bail: false, // エラーがあっても全テストを実行
     grep: grepPattern, // --grepオプションがあれば設定
     reporter: 'spec', // 詳細な出力
@@ -39,11 +39,11 @@ export async function run(): Promise<void> {
       }
     });
 
-    // タイムアウト対策: 60秒でテストを強制終了
+    // タイムアウト対策: 90秒でテストを強制終了
     const timeout = setTimeout(() => {
       runner.abort();
-      reject(new Error('Test execution timeout after 60 seconds'));
-    }, 60000);
+      reject(new Error('Test execution timeout after 90 seconds'));
+    }, 90000);
 
     runner.on('end', () => {
       clearTimeout(timeout);

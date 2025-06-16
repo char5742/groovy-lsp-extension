@@ -134,9 +134,12 @@ public class GroovyAstParser implements AutoCloseable {
   }
 
   /** 解析結果 */
-  public record ParseResult(ModuleNode moduleNode, List<ParseDiagnostic> diagnostics) {
+  public record ParseResult(@Nullable ModuleNode moduleNode, List<ParseDiagnostic> diagnostics) {
     /** すべてのクラスノードを取得 */
     public List<ClassNode> getClasses() {
+      if (moduleNode == null) {
+        return List.of();
+      }
       var classes = moduleNode.getClasses();
       return classes != null ? new ArrayList<>(classes) : List.of();
     }

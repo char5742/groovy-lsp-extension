@@ -3,6 +3,7 @@ package com.groovylsp.application.usecase;
 import com.groovylsp.domain.model.DiagnosticItem;
 import com.groovylsp.domain.model.DiagnosticResult;
 import com.groovylsp.domain.model.TextDocument;
+import com.groovylsp.domain.service.AstAnalysisService;
 import com.groovylsp.domain.service.BracketValidationService;
 import com.groovylsp.domain.service.LineCountService;
 import com.groovylsp.infrastructure.lexer.GroovyLexer;
@@ -21,12 +22,16 @@ public class DiagnosticUseCase {
   private static final Logger logger = LoggerFactory.getLogger(DiagnosticUseCase.class);
   private final LineCountService lineCountService;
   private final BracketValidationService bracketValidationService;
+  private final AstAnalysisService astAnalysisService;
 
   @Inject
   public DiagnosticUseCase(
-      LineCountService lineCountService, BracketValidationService bracketValidationService) {
+      LineCountService lineCountService,
+      BracketValidationService bracketValidationService,
+      AstAnalysisService astAnalysisService) {
     this.lineCountService = lineCountService;
     this.bracketValidationService = bracketValidationService;
+    this.astAnalysisService = astAnalysisService;
   }
 
   /**
@@ -56,6 +61,30 @@ public class DiagnosticUseCase {
                       "groovy-lsp-line-count");
 
               diagnostics.add(lineCountItem);
+
+              // Phase 3 M3.2: AST解析による構文エラー検出
+              var astResult =
+                  astAnalysisService.analyze(document.uri().toString(), document.content());
+              astResult
+                  .peek(
+                      astInfo -> {
+                        // 構文エラーを診断に追加
+                        diagnostics.addAll(astInfo.syntaxErrors());
+
+                        // デバッグ情報をログ出力
+                        logger.debug(
+                            "AST analysis completed: {} classes found, {} syntax errors",
+                            astInfo.classes().size(),
+                            astInfo.syntaxErrors().size());
+                        for (var classInfo : astInfo.classes()) {
+                          logger.debug(
+                              "Found class: {} with {} methods and {} fields",
+                              classInfo.name(),
+                              classInfo.methods().size(),
+                              classInfo.fields().size());
+                        }
+                      })
+                  .peekLeft(error -> logger.error("Failed to analyze AST: {}", error));
 
               // Phase 2 M2.3: 括弧の対応チェック
               var lexer = new GroovyLexer(document.content());
