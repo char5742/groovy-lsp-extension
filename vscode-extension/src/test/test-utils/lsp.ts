@@ -63,7 +63,7 @@ export async function closeDoc(doc: TextDocument): Promise<void> {
  * @param position 位置
  * @returns ホバー情報
  */
-export async function getHoverAt(doc: TextDocument, position: Position): Promise<Hover[]> {
+export async function getHoverAt(doc: TextDocument, position: Position): Promise<Hover[] | undefined> {
   return await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', doc.uri, position);
 }
 
@@ -73,7 +73,7 @@ export async function getHoverAt(doc: TextDocument, position: Position): Promise
  * @param position 位置
  * @returns 補完候補リスト
  */
-export async function getCompletionsAt(doc: TextDocument, position: Position): Promise<CompletionList> {
+export async function getCompletionsAt(doc: TextDocument, position: Position): Promise<CompletionList | undefined> {
   return await commands.executeCommand<CompletionList>('vscode.executeCompletionItemProvider', doc.uri, position);
 }
 
@@ -112,7 +112,7 @@ export async function getLanguageClient(): Promise<LanguageClient | undefined> {
  * @param position 位置
  * @returns 定義の位置
  */
-export async function getDefinitionAt(doc: TextDocument, position: Position): Promise<Location[]> {
+export async function getDefinitionAt(doc: TextDocument, position: Position): Promise<Location[] | undefined> {
   return await commands.executeCommand<Location[]>('vscode.executeDefinitionProvider', doc.uri, position);
 }
 
@@ -122,7 +122,7 @@ export async function getDefinitionAt(doc: TextDocument, position: Position): Pr
  * @param position 位置
  * @returns 参照の位置リスト
  */
-export async function getReferencesAt(doc: TextDocument, position: Position): Promise<Location[]> {
+export async function getReferencesAt(doc: TextDocument, position: Position): Promise<Location[] | undefined> {
   return await commands.executeCommand<Location[]>('vscode.executeReferenceProvider', doc.uri, position);
 }
 
@@ -131,6 +131,6 @@ export async function getReferencesAt(doc: TextDocument, position: Position): Pr
  * @param query 検索クエリ
  * @returns シンボル情報リスト
  */
-export async function getWorkspaceSymbols(query: string): Promise<SymbolInformation[]> {
+export async function getWorkspaceSymbols(query: string): Promise<SymbolInformation[] | undefined> {
   return await commands.executeCommand<SymbolInformation[]>('vscode.executeWorkspaceSymbolProvider', query);
 }

@@ -193,7 +193,7 @@ class TestScenarioExtractor {
 }
 
 // メイン処理
-async function main() {
+function main() {
   const extractor = new TestScenarioExtractor();
   const testRoot = join(__dirname, '../src/test');
 
