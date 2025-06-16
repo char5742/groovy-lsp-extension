@@ -9,10 +9,8 @@ import io.vavr.collection.List;
 import io.vavr.control.Either;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import org.jspecify.annotations.NullMarked;
 
 /** 括弧の対応をチェックするサービス */
-@NullMarked
 @Singleton
 public class BracketValidationService {
 

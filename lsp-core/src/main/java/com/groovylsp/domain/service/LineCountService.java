@@ -2,7 +2,6 @@ package com.groovylsp.domain.service;
 
 import com.groovylsp.domain.model.LineCountResult;
 import io.vavr.control.Either;
-import java.util.Objects;
 
 /**
  * 行カウント機能を提供するドメインサービス。
@@ -37,7 +36,6 @@ public class LineCountService {
    * @throws NullPointerException contentがnullの場合
    */
   public Either<String, LineCountResult> countLines(String content) {
-    Objects.requireNonNull(content, "content must not be null");
 
     if (content.isEmpty()) {
       return Either.right(LineCountResult.empty());

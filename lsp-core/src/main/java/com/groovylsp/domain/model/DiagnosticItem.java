@@ -1,7 +1,5 @@
 package com.groovylsp.domain.model;
 
-import java.util.Objects;
-
 /** 診断結果の個別アイテムを表すドメインモデル。 */
 public record DiagnosticItem(
     DocumentPosition startPosition,
@@ -10,13 +8,7 @@ public record DiagnosticItem(
     String message,
     String source) {
 
-  public DiagnosticItem {
-    Objects.requireNonNull(startPosition, "startPosition must not be null");
-    Objects.requireNonNull(endPosition, "endPosition must not be null");
-    Objects.requireNonNull(severity, "severity must not be null");
-    Objects.requireNonNull(message, "message must not be null");
-    Objects.requireNonNull(source, "source must not be null");
-  }
+  public DiagnosticItem {}
 
   /** 診断の重要度レベル。 */
   public enum DiagnosticSeverity {
