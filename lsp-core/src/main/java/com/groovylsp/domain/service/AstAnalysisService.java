@@ -18,7 +18,6 @@ import org.codehaus.groovy.ast.FieldNode;
 import org.codehaus.groovy.ast.MethodNode;
 import org.codehaus.groovy.ast.ModuleNode;
 import org.codehaus.groovy.ast.Parameter;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -26,7 +25,6 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>GroovyAstParserの結果をドメインモデルに変換します。
  */
-@NullMarked
 @Singleton
 public class AstAnalysisService {
 

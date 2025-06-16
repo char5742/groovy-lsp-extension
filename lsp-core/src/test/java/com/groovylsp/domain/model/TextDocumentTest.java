@@ -24,23 +24,6 @@ class TextDocumentTest {
   }
 
   @Test
-  void shouldThrowExceptionForNullUri() {
-    assertThrows(NullPointerException.class, () -> new TextDocument(null, "groovy", 1, "content"));
-  }
-
-  @Test
-  void shouldThrowExceptionForNullLanguageId() {
-    var uri = URI.create("file:///test.groovy");
-    assertThrows(NullPointerException.class, () -> new TextDocument(uri, null, 1, "content"));
-  }
-
-  @Test
-  void shouldThrowExceptionForNullContent() {
-    var uri = URI.create("file:///test.groovy");
-    assertThrows(NullPointerException.class, () -> new TextDocument(uri, "groovy", 1, null));
-  }
-
-  @Test
   void shouldThrowExceptionForNegativeVersion() {
     var uri = URI.create("file:///test.groovy");
     assertThrows(

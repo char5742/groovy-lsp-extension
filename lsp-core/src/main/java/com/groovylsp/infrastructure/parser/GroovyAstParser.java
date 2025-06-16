@@ -17,7 +17,6 @@ import org.codehaus.groovy.control.SourceUnit;
 import org.codehaus.groovy.control.messages.Message;
 import org.codehaus.groovy.control.messages.SyntaxErrorMessage;
 import org.codehaus.groovy.syntax.SyntaxException;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +28,6 @@ import org.slf4j.LoggerFactory;
  *
  * <p>スレッドセーフ: このクラスのインスタンスは複数のスレッドから安全に使用できます。 内部的に各パース操作は独立したCompilationUnitで実行されます。
  */
-@NullMarked
 public class GroovyAstParser implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(GroovyAstParser.class);

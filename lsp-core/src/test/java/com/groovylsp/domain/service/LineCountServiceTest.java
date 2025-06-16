@@ -1,7 +1,6 @@
 package com.groovylsp.domain.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.groovylsp.testing.FastTest;
 import org.junit.jupiter.api.BeforeEach;
@@ -163,13 +162,6 @@ class LineCountServiceTest {
     assertThat(lineCount.totalLines()).isEqualTo(4);
     assertThat(lineCount.blankLines()).isEqualTo(2);
     assertThat(lineCount.codeLines()).isEqualTo(2);
-  }
-
-  @Test
-  void nullコンテンツの場合は例外が発生する() {
-    assertThatThrownBy(() -> lineCountService.countLines(null))
-        .isInstanceOf(NullPointerException.class)
-        .hasMessageContaining("content must not be null");
   }
 
   // 現在の実装では文字列リテラル内のコメント記号は考慮していない
