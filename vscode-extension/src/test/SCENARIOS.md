@@ -2,9 +2,9 @@
 
 ## 概要
 
-- **総テスト数**: 31
+- **総テスト数**: 39
 - **単体テスト**: 8
-- **統合テスト**: 23
+- **統合テスト**: 31
 - **E2Eテスト**: 0
 
 ## 単体テスト
@@ -26,6 +26,30 @@
 - String test
 
 ## 統合テスト
+
+### 構文エラーの検出
+*ファイル: src/test/integration/ast-analysis.spec.ts*
+
+- 閉じ括弧が不足している場合、構文エラーが検出される
+- 不正なインポート文がある場合、構文エラーが検出される
+- 正しい構文の場合、構文エラーが検出されない
+
+### クラス定義の認識
+*ファイル: src/test/integration/ast-analysis.spec.ts*
+
+- 複数のクラス定義がある場合でも、各クラスが正しく認識される
+
+### メソッド定義の認識
+*ファイル: src/test/integration/ast-analysis.spec.ts*
+
+- Spockテストメソッドの特殊な名前が正しく認識される
+- 様々なメソッド修飾子が正しく認識される
+
+### 複雑な構文の処理
+*ファイル: src/test/integration/ast-analysis.spec.ts*
+
+- クロージャとGStringを含むコードが正しく解析される
+- Groovy特有の構文（プロパティアクセス、安全参照演算子など）が正しく解析される
 
 ### 括弧の対応チェック機能のテスト
 *ファイル: src/test/integration/bracket-matching.spec.ts*
