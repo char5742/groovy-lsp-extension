@@ -40,6 +40,9 @@ public class GroovyLanguageServer implements LanguageServer, LanguageClientAware
     // ドキュメントシンボル機能
     capabilities.setDocumentSymbolProvider(true);
 
+    // ホバー機能
+    capabilities.setHoverProvider(true);
+
     var result = new InitializeResult(capabilities);
     return CompletableFuture.completedFuture(result);
   }

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.groovylsp.application.usecase.DiagnosticUseCase;
 import com.groovylsp.application.usecase.DocumentSymbolUseCase;
+import com.groovylsp.application.usecase.HoverUseCase;
 import com.groovylsp.application.usecase.TextDocumentSyncUseCase;
 import com.groovylsp.domain.model.TextDocument;
 import com.groovylsp.testing.FastTest;
@@ -34,6 +35,7 @@ class GroovyTextDocumentServiceTest {
   private TextDocumentSyncUseCase syncUseCase;
   private DiagnosticUseCase diagnosticUseCase;
   private DocumentSymbolUseCase documentSymbolUseCase;
+  private HoverUseCase hoverUseCase;
   private LanguageClient client;
 
   @BeforeEach
@@ -41,8 +43,11 @@ class GroovyTextDocumentServiceTest {
     syncUseCase = mock(TextDocumentSyncUseCase.class);
     diagnosticUseCase = mock(DiagnosticUseCase.class);
     documentSymbolUseCase = mock(DocumentSymbolUseCase.class);
+    hoverUseCase = mock(HoverUseCase.class);
     client = mock(LanguageClient.class);
-    service = new GroovyTextDocumentService(syncUseCase, diagnosticUseCase, documentSymbolUseCase);
+    service =
+        new GroovyTextDocumentService(
+            syncUseCase, diagnosticUseCase, documentSymbolUseCase, hoverUseCase);
     service.connect(client);
   }
 

@@ -2,6 +2,7 @@ package com.groovylsp.presentation.server;
 
 import com.groovylsp.application.usecase.DiagnosticUseCase;
 import com.groovylsp.application.usecase.DocumentSymbolUseCase;
+import com.groovylsp.application.usecase.HoverUseCase;
 import com.groovylsp.application.usecase.TextDocumentSyncUseCase;
 import com.groovylsp.domain.model.DiagnosticItem;
 import com.groovylsp.domain.model.DiagnosticResult;
@@ -19,6 +20,8 @@ import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
 import org.eclipse.lsp4j.DocumentSymbol;
 import org.eclipse.lsp4j.DocumentSymbolParams;
+import org.eclipse.lsp4j.Hover;
+import org.eclipse.lsp4j.HoverParams;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
@@ -41,15 +44,18 @@ public class GroovyTextDocumentService implements TextDocumentService, LanguageC
   private final TextDocumentSyncUseCase syncUseCase;
   private final DiagnosticUseCase diagnosticUseCase;
   private final DocumentSymbolUseCase documentSymbolUseCase;
+  private final HoverUseCase hoverUseCase;
 
   @Inject
   public GroovyTextDocumentService(
       TextDocumentSyncUseCase syncUseCase,
       DiagnosticUseCase diagnosticUseCase,
-      DocumentSymbolUseCase documentSymbolUseCase) {
+      DocumentSymbolUseCase documentSymbolUseCase,
+      HoverUseCase hoverUseCase) {
     this.syncUseCase = syncUseCase;
     this.diagnosticUseCase = diagnosticUseCase;
     this.documentSymbolUseCase = documentSymbolUseCase;
+    this.hoverUseCase = hoverUseCase;
   }
 
   @Override
@@ -188,6 +194,19 @@ public class GroovyTextDocumentService implements TextDocumentService, LanguageC
                     logger.error("ドキュメントシンボルの取得に失敗しました: {}", params.getTextDocument().getUri());
                     return List.of();
                   });
+        });
+  }
+
+  @Override
+  public CompletableFuture<Hover> hover(HoverParams params) {
+    return CompletableFuture.supplyAsync(
+        () -> {
+          var result = hoverUseCase.getHover(params);
+          return result.getOrElseGet(
+              error -> {
+                logger.error("ホバー情報の取得に失敗しました: {}", error);
+                return null;
+              });
         });
   }
 }

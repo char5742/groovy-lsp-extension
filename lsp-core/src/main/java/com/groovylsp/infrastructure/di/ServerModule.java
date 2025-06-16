@@ -2,6 +2,7 @@ package com.groovylsp.infrastructure.di;
 
 import com.groovylsp.application.usecase.DiagnosticUseCase;
 import com.groovylsp.application.usecase.DocumentSymbolUseCase;
+import com.groovylsp.application.usecase.HoverUseCase;
 import com.groovylsp.application.usecase.TextDocumentSyncUseCase;
 import com.groovylsp.domain.repository.TextDocumentRepository;
 import com.groovylsp.domain.service.AstAnalysisService;
@@ -66,11 +67,19 @@ public class ServerModule {
 
   @Provides
   @Singleton
+  public HoverUseCase provideHoverUseCase(TextDocumentRepository repository) {
+    return new HoverUseCase(repository);
+  }
+
+  @Provides
+  @Singleton
   public GroovyTextDocumentService provideTextDocumentService(
       TextDocumentSyncUseCase syncUseCase,
       DiagnosticUseCase diagnosticUseCase,
-      DocumentSymbolUseCase documentSymbolUseCase) {
-    return new GroovyTextDocumentService(syncUseCase, diagnosticUseCase, documentSymbolUseCase);
+      DocumentSymbolUseCase documentSymbolUseCase,
+      HoverUseCase hoverUseCase) {
+    return new GroovyTextDocumentService(
+        syncUseCase, diagnosticUseCase, documentSymbolUseCase, hoverUseCase);
   }
 
   @Provides
