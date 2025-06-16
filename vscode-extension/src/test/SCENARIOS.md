@@ -4,8 +4,7 @@
 
 - **総テスト数**: 39
 - **単体テスト**: 8
-- **統合テスト**: 31
-- **E2Eテスト**: 0
+- **E2Eテスト**: 31
 
 ## 単体テスト
 
@@ -25,34 +24,34 @@
 - Simple arithmetic test
 - String test
 
-## 統合テスト
+## E2Eテスト
 
 ### 構文エラーの検出
-*ファイル: src/test/integration/ast-analysis.spec.ts*
+*ファイル: src/test/e2e/ast-analysis.spec.ts*
 
 - 閉じ括弧が不足している場合、構文エラーが検出される
 - 不正なインポート文がある場合、構文エラーが検出される
 - 正しい構文の場合、構文エラーが検出されない
 
 ### クラス定義の認識
-*ファイル: src/test/integration/ast-analysis.spec.ts*
+*ファイル: src/test/e2e/ast-analysis.spec.ts*
 
 - 複数のクラス定義がある場合でも、各クラスが正しく認識される
 
 ### メソッド定義の認識
-*ファイル: src/test/integration/ast-analysis.spec.ts*
+*ファイル: src/test/e2e/ast-analysis.spec.ts*
 
 - Spockテストメソッドの特殊な名前が正しく認識される
 - 様々なメソッド修飾子が正しく認識される
 
 ### 複雑な構文の処理
-*ファイル: src/test/integration/ast-analysis.spec.ts*
+*ファイル: src/test/e2e/ast-analysis.spec.ts*
 
 - クロージャとGStringを含むコードが正しく解析される
 - Groovy特有の構文（プロパティアクセス、安全参照演算子など）が正しく解析される
 
 ### 括弧の対応チェック機能のテスト
-*ファイル: src/test/integration/bracket-matching.spec.ts*
+*ファイル: src/test/e2e/bracket-matching.spec.ts*
 
 - 正しい括弧のペアではエラーが表示されない
 - 開き括弧が多い場合にエラーが表示される
@@ -65,7 +64,7 @@
 - 複雑なSpockテストでの括弧チェック
 
 ### コマンド機能のテスト
-*ファイル: src/test/integration/command.spec.ts*
+*ファイル: src/test/e2e/command.spec.ts*
 
 - 拡張機能が正しくアクティベートされる
 - groovy-lsp.restartServerコマンドが登録されている
@@ -76,19 +75,19 @@
 - restartServerコマンドが実行できる
 
 ### 診断機能のテスト
-*ファイル: src/test/integration/diagnostics.spec.ts*
+*ファイル: src/test/e2e/diagnostics.spec.ts*
 
 - 行カウント情報が表示される
 - ファイル変更時も行カウント情報が更新される
 - 空のGroovyファイルでも行カウント情報が表示される
 
 ### Document Synchronization Test Suite
-*ファイル: src/test/integration/document-sync.test.ts*
+*ファイル: src/test/e2e/document-sync.test.ts*
 
 - Should handle document synchronization
 
 ### Groovyファイル判定の統合テスト
-*ファイル: src/test/integration/groovy-file-detection.test.ts*
+*ファイル: src/test/e2e/groovy-file-detection.test.ts*
 
 - Groovyファイルに対してのみ診断が実行される
 - Gradleファイルに対して診断が実行される
