@@ -342,7 +342,9 @@ class GroovyAstParserTest {
       // given
       int threadCount = 10;
       var threads = new Thread[threadCount];
-      var results = new Either[threadCount];
+      var results =
+          new java.util.concurrent.ConcurrentHashMap<
+              Integer, Either<GroovyAstParser.ParseError, GroovyAstParser.ParseResult>>();
 
       // when
       for (int i = 0; i < threadCount; i++) {
@@ -350,10 +352,11 @@ class GroovyAstParserTest {
         threads[i] =
             new Thread(
                 () -> {
-                  results[index] =
+                  results.put(
+                      index,
                       parser.parse(
                           "thread" + index + ".groovy",
-                          "class Thread" + index + " { void run() {} }");
+                          "class Thread" + index + " { void run() {} }"));
                 });
         threads[i].start();
       }
@@ -365,8 +368,10 @@ class GroovyAstParserTest {
 
       // then
       for (int i = 0; i < threadCount; i++) {
-        assertThat(results[i].isRight()).isTrue();
-        var parseResult = (GroovyAstParser.ParseResult) results[i].get();
+        var result = results.get(i);
+        assertThat(result).isNotNull();
+        assertThat(result.isRight()).isTrue();
+        var parseResult = (GroovyAstParser.ParseResult) result.get();
         assertThat(parseResult.getClasses()).hasSize(1);
         assertThat(parseResult.getClasses().get(0).getName()).isEqualTo("Thread" + i);
       }
