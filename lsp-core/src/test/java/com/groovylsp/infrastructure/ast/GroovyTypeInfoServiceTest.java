@@ -68,7 +68,7 @@ class GroovyTypeInfoServiceTest {
     assertTrue(result.isRight());
     TypeInfoService.TypeInfo typeInfo = result.get();
     assertEquals("count", typeInfo.name());
-    assertEquals("int", typeInfo.type());
+    assertEquals("Integer", typeInfo.type());
     assertEquals(TypeInfoService.TypeInfo.Kind.LOCAL_VARIABLE, typeInfo.kind());
   }
 
@@ -118,7 +118,7 @@ class GroovyTypeInfoServiceTest {
     assertTrue(result.isRight());
     TypeInfoService.TypeInfo typeInfo = result.get();
     assertEquals("a", typeInfo.name());
-    assertEquals("int", typeInfo.type());
+    assertEquals("Integer", typeInfo.type());
     assertEquals(TypeInfoService.TypeInfo.Kind.PARAMETER, typeInfo.kind());
   }
 
@@ -142,7 +142,7 @@ class GroovyTypeInfoServiceTest {
     assertTrue(result.isRight());
     TypeInfoService.TypeInfo typeInfo = result.get();
     assertEquals("add", typeInfo.name());
-    assertTrue(typeInfo.type().contains("add(int a, int b): int"));
+    assertTrue(typeInfo.type().contains("add(Integer a, Integer b): Integer"));
     assertEquals(TypeInfoService.TypeInfo.Kind.METHOD, typeInfo.kind());
   }
 

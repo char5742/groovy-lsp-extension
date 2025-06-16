@@ -7,9 +7,20 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import org.codehaus.groovy.ast.*;
-import org.codehaus.groovy.ast.expr.*;
-import org.codehaus.groovy.ast.stmt.*;
+import org.codehaus.groovy.ast.ASTNode;
+import org.codehaus.groovy.ast.ClassCodeVisitorSupport;
+import org.codehaus.groovy.ast.ClassNode;
+import org.codehaus.groovy.ast.FieldNode;
+import org.codehaus.groovy.ast.GenericsType;
+import org.codehaus.groovy.ast.MethodNode;
+import org.codehaus.groovy.ast.ModuleNode;
+import org.codehaus.groovy.ast.Parameter;
+import org.codehaus.groovy.ast.expr.DeclarationExpression;
+import org.codehaus.groovy.ast.expr.Expression;
+import org.codehaus.groovy.ast.expr.VariableExpression;
+import org.codehaus.groovy.ast.stmt.BlockStatement;
+import org.codehaus.groovy.ast.stmt.ExpressionStatement;
+import org.codehaus.groovy.ast.stmt.Statement;
 import org.codehaus.groovy.control.SourceUnit;
 import org.eclipse.lsp4j.Position;
 import org.jspecify.annotations.Nullable;
@@ -51,7 +62,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
               }
 
               // 指定位置の要素を探索
-              TypeInfoVisitor visitor = new TypeInfoVisitor(position);
+              var visitor = new TypeInfoVisitor(position);
               for (ClassNode classNode : parseResult.getClasses()) {
                 visitor.visitClass(classNode);
               }
@@ -82,7 +93,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
   /** AST訪問者クラス（型情報を探索） */
   private static class TypeInfoVisitor extends ClassCodeVisitorSupport {
     private final Position targetPosition;
-    @Nullable private TypeInfo foundTypeInfo;
+    private @Nullable TypeInfo foundTypeInfo;
 
     public TypeInfoVisitor(Position targetPosition) {
       // LSPの位置は0ベース、Groovyは1ベースなので+1で変換
@@ -90,8 +101,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
           new Position(targetPosition.getLine() + 1, targetPosition.getCharacter() + 1);
     }
 
-    @Nullable
-    public TypeInfo getFoundTypeInfo() {
+    public @Nullable TypeInfo getFoundTypeInfo() {
       return foundTypeInfo;
     }
 
@@ -265,7 +275,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
       // 変数宣言の処理
       Expression leftExpression = expression.getLeftExpression();
       if (leftExpression instanceof VariableExpression) {
-        VariableExpression varExpr = (VariableExpression) leftExpression;
+        var varExpr = (VariableExpression) leftExpression;
 
         // デバッグログ
         logger.debug(
@@ -349,7 +359,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
       // ジェネリクス型の基本的な処理
       GenericsType[] generics = type.getGenericsTypes();
       if (generics != null && generics.length > 0) {
-        StringBuilder sb = new StringBuilder(type.getNameWithoutPackage());
+        var sb = new StringBuilder(type.getNameWithoutPackage());
         sb.append("<");
         for (int i = 0; i < generics.length; i++) {
           if (i > 0) {
@@ -371,7 +381,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
      * @return フォーマットされたシグネチャ
      */
     private String formatMethodSignature(MethodNode method) {
-      StringBuilder sb = new StringBuilder();
+      var sb = new StringBuilder();
       sb.append(method.getName());
       sb.append("(");
 
