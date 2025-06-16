@@ -216,12 +216,21 @@ public class GroovyLexer {
 
   /** 文字列リテラルをスキャン */
   private Token scanString(char quote, int startPosition, int startLine, int startColumn) {
-    while (peek() != quote && !isAtEnd()) {
+    while (!isAtEnd()) {
       if (peek() == '\n') {
         line++;
         column = 1;
       }
-      advance();
+      if (peek() == '\\') {
+        advance(); // バックスラッシュを消費
+        if (!isAtEnd()) {
+          advance(); // エスケープされた文字を消費
+        }
+      } else if (peek() == quote) {
+        break; // 閉じクォートが見つかった
+      } else {
+        advance();
+      }
     }
 
     if (isAtEnd()) {
@@ -291,9 +300,9 @@ public class GroovyLexer {
           advance();
           break;
         case '\n':
+          advance();
           line++;
           column = 1;
-          position++;
           break;
         default:
           return;
