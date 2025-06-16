@@ -1,5 +1,6 @@
 package com.groovylsp.infrastructure.symbol;
 
+import com.groovylsp.domain.constant.ErrorMessages;
 import com.groovylsp.domain.model.ScopeManager;
 import com.groovylsp.domain.model.SymbolDefinition;
 import com.groovylsp.domain.model.SymbolTable;
@@ -70,14 +71,16 @@ public class GroovyDefinitionFinderService implements DefinitionFinderService {
 
   @Override
   public Either<String, SymbolDefinition> findDefinitionByQualifiedName(String qualifiedName) {
-    return symbolTable.findByQualifiedName(qualifiedName).toEither("定義が見つかりません: " + qualifiedName);
+    return symbolTable
+        .findByQualifiedName(qualifiedName)
+        .toEither(String.format(ErrorMessages.DEFINITION_NOT_FOUND, qualifiedName));
   }
 
   /** 指定位置の単語を取得 */
   private Either<String, String> getWordAtPosition(String uri, Position position) {
     return documentContentService
         .getContent(uri)
-        .toEither("ドキュメントが見つかりません: " + uri)
+        .toEither(String.format(ErrorMessages.DOCUMENT_NOT_FOUND, uri))
         .map(
             content -> {
               String[] lines = content.split("\n");

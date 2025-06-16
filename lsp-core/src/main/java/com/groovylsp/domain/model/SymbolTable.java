@@ -1,10 +1,13 @@
 package com.groovylsp.domain.model;
 
 import io.vavr.collection.HashMap;
+import io.vavr.collection.HashMultimap;
 import io.vavr.collection.List;
 import io.vavr.collection.Map;
+import io.vavr.collection.Multimap;
 import io.vavr.collection.Set;
 import io.vavr.control.Option;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * シンボルと定義位置のマッピングを管理するシンボルテーブル
@@ -14,18 +17,22 @@ import io.vavr.control.Option;
 public class SymbolTable {
 
   /** ファイルURIごとのシンボル定義 */
-  private Map<String, List<SymbolDefinition>> symbolsByFile;
+  private Multimap<String, SymbolDefinition> symbolsByFile;
 
   /** 名前によるシンボル定義のマッピング */
-  private Map<String, List<SymbolDefinition>> symbolsByName;
+  private Multimap<String, SymbolDefinition> symbolsByName;
 
   /** 完全修飾名によるシンボル定義のマッピング */
   private Map<String, SymbolDefinition> symbolsByQualifiedName;
 
+  /** 頻繁にアクセスされるシンボル名のキャッシュ */
+  private final ConcurrentHashMap<String, List<SymbolDefinition>> nameCache;
+
   public SymbolTable() {
-    this.symbolsByFile = HashMap.empty();
-    this.symbolsByName = HashMap.empty();
+    this.symbolsByFile = HashMultimap.withSeq().empty();
+    this.symbolsByName = HashMultimap.withSeq().empty();
     this.symbolsByQualifiedName = HashMap.empty();
+    this.nameCache = new ConcurrentHashMap<>();
   }
 
   /**
@@ -35,16 +42,13 @@ public class SymbolTable {
    */
   public void addSymbol(SymbolDefinition definition) {
     // ファイルごとのマッピングに追加
-    symbolsByFile =
-        symbolsByFile.put(
-            definition.uri(),
-            symbolsByFile.get(definition.uri()).getOrElse(List.empty()).append(definition));
+    symbolsByFile = symbolsByFile.put(definition.uri(), definition);
 
     // 名前によるマッピングに追加
-    symbolsByName =
-        symbolsByName.put(
-            definition.name(),
-            symbolsByName.get(definition.name()).getOrElse(List.empty()).append(definition));
+    symbolsByName = symbolsByName.put(definition.name(), definition);
+
+    // キャッシュを無効化
+    nameCache.remove(definition.name());
 
     // 完全修飾名によるマッピングに追加
     symbolsByQualifiedName = symbolsByQualifiedName.put(definition.qualifiedName(), definition);
@@ -66,33 +70,26 @@ public class SymbolTable {
    */
   public void clearFile(String uri) {
     // 該当ファイルのシンボルを取得
-    Option<List<SymbolDefinition>> fileSymbols = symbolsByFile.get(uri);
+    var fileSymbolsOpt = symbolsByFile.get(uri);
 
-    if (fileSymbols.isDefined()) {
-      // 各シンボルを名前と完全修飾名のマッピングから削除
-      fileSymbols
-          .get()
-          .forEach(
+    fileSymbolsOpt.forEach(
+        fileSymbols -> {
+          // 各シンボルを名前と完全修飾名のマッピングから削除
+          fileSymbols.forEach(
               symbol -> {
                 // 名前によるマッピングから削除
-                Option<List<SymbolDefinition>> namedSymbols = symbolsByName.get(symbol.name());
-                if (namedSymbols.isDefined()) {
-                  List<SymbolDefinition> updated =
-                      namedSymbols.get().filter(s -> !s.uri().equals(uri));
-                  if (updated.isEmpty()) {
-                    symbolsByName = symbolsByName.remove(symbol.name());
-                  } else {
-                    symbolsByName = symbolsByName.put(symbol.name(), updated);
-                  }
-                }
+                symbolsByName = symbolsByName.remove(symbol.name(), symbol);
+
+                // キャッシュを無効化
+                nameCache.remove(symbol.name());
 
                 // 完全修飾名によるマッピングから削除
                 symbolsByQualifiedName = symbolsByQualifiedName.remove(symbol.qualifiedName());
               });
+        });
 
-      // ファイルごとのマッピングから削除
-      symbolsByFile = symbolsByFile.remove(uri);
-    }
+    // ファイルごとのマッピングから削除
+    symbolsByFile = symbolsByFile.remove(uri);
   }
 
   /**
@@ -102,7 +99,22 @@ public class SymbolTable {
    * @return 見つかったシンボル定義のリスト
    */
   public List<SymbolDefinition> findByName(String name) {
-    return symbolsByName.get(name).getOrElse(List.empty());
+    // キャッシュから取得を試みる
+    List<SymbolDefinition> cached = nameCache.get(name);
+    if (cached != null) {
+      return cached;
+    }
+
+    // キャッシュにない場合は通常の検索
+    List<SymbolDefinition> result =
+        symbolsByName.get(name).map(List::ofAll).getOrElse(List.empty());
+
+    // 結果をキャッシュに保存（頻繁にアクセスされる場合のみ）
+    if (!result.isEmpty()) {
+      nameCache.put(name, result);
+    }
+
+    return result;
   }
 
   /**
@@ -122,7 +134,7 @@ public class SymbolTable {
    * @return シンボル定義のリスト
    */
   public List<SymbolDefinition> getSymbolsInFile(String uri) {
-    return symbolsByFile.get(uri).getOrElse(List.empty());
+    return symbolsByFile.get(uri).map(List::ofAll).getOrElse(List.empty());
   }
 
   /**
@@ -145,7 +157,6 @@ public class SymbolTable {
   public List<SymbolDefinition> findByContainingClass(String qualifiedClassName) {
     return symbolsByName
         .values()
-        .flatMap(list -> list)
         .filter(symbol -> qualifiedClassName.equals(symbol.containingClass()))
         .toList();
   }
@@ -170,8 +181,9 @@ public class SymbolTable {
 
   /** シンボルテーブルをクリア */
   public void clear() {
-    symbolsByFile = HashMap.empty();
-    symbolsByName = HashMap.empty();
+    symbolsByFile = HashMultimap.withSeq().empty();
+    symbolsByName = HashMultimap.withSeq().empty();
     symbolsByQualifiedName = HashMap.empty();
+    nameCache.clear();
   }
 }

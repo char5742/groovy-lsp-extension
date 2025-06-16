@@ -163,7 +163,7 @@ public class GroovySymbolTableBuilderService implements SymbolTableBuilderServic
               var paramDef =
                   new SymbolDefinition(
                       param.name(),
-                      qualifiedClassName + "." + methodInfo.name() + "." + param.name(),
+                      buildQualifiedName(methodScope, param.name()),
                       org.eclipse.lsp4j.SymbolKind.Variable,
                       uri,
                       methodRange,
@@ -185,5 +185,18 @@ public class GroovySymbolTableBuilderService implements SymbolTableBuilderServic
   private Range createSelectionRange(ClassInfo.Position position) {
     // TODO: より正確な名前部分の範囲を計算する
     return createRange(position);
+  }
+
+  /** スコープ階層を考慮した完全修飾名を生成 */
+  private String buildQualifiedName(Scope scope, String name) {
+    var qualifiedName = new StringBuilder(name);
+    var currentScope = scope;
+
+    while (currentScope != null && currentScope.getName() != null) {
+      qualifiedName.insert(0, currentScope.getName() + ".");
+      currentScope = currentScope.getParent();
+    }
+
+    return qualifiedName.toString();
   }
 }
