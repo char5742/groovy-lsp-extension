@@ -1,6 +1,6 @@
 import { ok } from 'node:assert/strict';
 import { type TextDocument, extensions, languages } from 'vscode';
-import { closeDoc, openDoc } from '../test-utils/lsp';
+import { closeDoc, openDoc } from '../test-utils/lsp.ts';
 
 describe('診断機能のテスト', () => {
   let doc: TextDocument;

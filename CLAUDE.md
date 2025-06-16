@@ -106,4 +106,4 @@ vscode-extension/
 
 ## 外部ツール設定
 
-- **Biome**: biome-ignoreを極力使用しないでください
+- **Biome**: biome-ignoreを禁止します

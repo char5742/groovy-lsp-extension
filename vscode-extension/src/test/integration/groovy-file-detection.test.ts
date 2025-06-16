@@ -1,7 +1,7 @@
 import { ok, strictEqual } from 'node:assert/strict';
 import { join } from 'node:path';
 import { type Extension, commands, extensions, languages, window, workspace } from 'vscode';
-import type { ExtensionApi } from '../../types';
+import type { ExtensionApi } from '../../types.ts';
 
 describe('Groovyファイル判定の統合テスト', () => {
   let extension: Extension<ExtensionApi> | undefined;

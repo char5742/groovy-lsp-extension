@@ -1,6 +1,6 @@
 import { ok, strictEqual } from 'node:assert/strict';
 import { commands, extensions, workspace } from 'vscode';
-import { getLanguageClient } from '../test-utils/lsp';
+import { getLanguageClient } from '../test-utils/lsp.ts';
 
 describe('コマンド機能のテスト', () => {
   it('拡張機能が正しくアクティベートされる', async () => {

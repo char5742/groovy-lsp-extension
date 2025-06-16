@@ -1,6 +1,6 @@
 import { ok, strictEqual } from 'node:assert/strict';
 import { type Diagnostic, type TextDocument, extensions, languages } from 'vscode';
-import { closeDoc, openDoc } from '../test-utils/lsp';
+import { closeDoc, openDoc } from '../test-utils/lsp.ts';
 
 // 診断を待つラッパー関数
 async function waitForDiagnostics(doc: TextDocument, expectedCount?: number): Promise<Diagnostic[]> {

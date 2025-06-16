@@ -7,35 +7,16 @@
   "engines": {
     "vscode": "^1.75.0"
   },
-  "categories": [
-    "Prdogramming Languages"
-  ],
-  "keywords": [
-    "groovy",
-    "spock",
-    "language-server",
-    "lsp"
-  ],
-  "activationEvents": [
-    "onLanguage:groovy"
-  ],
+  "categories": ["Prdogramming Languages"],
+  "keywords": ["groovy", "spock", "language-server", "lsp"],
+  "activationEvents": ["onLanguage:groovy"],
   "main": "./out/extension.js",
   "contributes": {
     "languages": [
       {
         "id": "groovy",
-        "aliases": [
-          "Groovy",
-          "groovy"
-        ],
-        "extensions": [
-          ".groovy",
-          ".gradle",
-          ".gradle.kts",
-          ".gvy",
-          ".gy",
-          ".gsh"
-        ],
+        "aliases": ["Groovy", "groovy"],
+        "extensions": [".groovy", ".gradle", ".gradle.kts", ".gvy", ".gy", ".gsh"],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -45,11 +26,7 @@
       "properties": {
         "groovy-lsp.trace.server": {
           "type": "string",
-          "enum": [
-            "off",
-            "messages",
-            "verbose"
-          ],
+          "enum": ["off", "messages", "verbose"],
           "default": "off",
           "description": "Traces the communication between VS Code and the language server."
         }
@@ -99,17 +76,8 @@
     "vscode-languageclient": "^9.0.1"
   },
   "c8": {
-    "include": [
-      "src/**/*.ts"
-    ],
-    "exclude": [
-      "**/*.test.ts",
-      "**/*.spec.ts"
-    ],
-    "reporter": [
-      "text",
-      "lcov",
-      "html"
-    ]
+    "include": ["src/**/*.ts"],
+    "exclude": ["**/*.test.ts", "**/*.spec.ts"],
+    "reporter": ["text", "lcov", "html"]
   }
 }

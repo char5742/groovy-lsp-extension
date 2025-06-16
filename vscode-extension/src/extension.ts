@@ -7,7 +7,7 @@ import {
   Trace,
   TransportKind,
 } from 'vscode-languageclient/node';
-import type { ExtensionApi } from './types';
+import type { ExtensionApi } from './types.ts';
 
 let client: LanguageClient | undefined;
 
