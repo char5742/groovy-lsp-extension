@@ -10,7 +10,8 @@ import java.util.Map;
 /** Groovyの字句解析器 */
 public class GroovyLexer {
 
-  private static final Map<String, TokenType> KEYWORDS = new HashMap<>();
+  // Groovyのキーワード数に基づいた初期容量
+  private static final Map<String, TokenType> KEYWORDS = new HashMap<>(64);
 
   static {
     // キーワードの登録
@@ -49,6 +50,8 @@ public class GroovyLexer {
       tokens = tokens.append(new Token(TokenType.EOF, "", position, position, line, column));
 
       return Either.right(tokens);
+    } catch (StringIndexOutOfBoundsException e) {
+      return Either.left("字句解析エラー: 予期しない入力終了 - 位置: " + position);
     } catch (Exception e) {
       return Either.left("字句解析エラー: " + e.getMessage());
     }
@@ -224,7 +227,8 @@ public class GroovyLexer {
     if (isAtEnd()) {
       // エラー: 閉じられていない文字列
       String text = source.substring(startPosition, position);
-      return new Token(TokenType.UNKNOWN, text, startPosition, position, startLine, startColumn);
+      return new Token(
+          TokenType.ERROR_UNCLOSED_STRING, text, startPosition, position, startLine, startColumn);
     }
 
     // 閉じクォートを消費
@@ -267,6 +271,11 @@ public class GroovyLexer {
     }
 
     String text = source.substring(startPosition, position);
+    // 閉じられていないブロックコメントのチェック
+    if (isAtEnd() && !text.endsWith("*/")) {
+      return new Token(
+          TokenType.ERROR_UNCLOSED_COMMENT, text, startPosition, position, startLine, startColumn);
+    }
     return new Token(TokenType.COMMENT, text, startPosition, position, startLine, startColumn);
   }
 

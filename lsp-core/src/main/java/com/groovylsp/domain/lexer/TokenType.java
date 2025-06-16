@@ -85,7 +85,12 @@ public enum TokenType {
   NEWLINE,
   COMMENT,
   EOF,
-  UNKNOWN;
+  UNKNOWN,
+
+  // エラートークン
+  ERROR_UNCLOSED_STRING,
+  ERROR_UNCLOSED_COMMENT,
+  ERROR_INVALID_NUMBER;
 
   private final String keyword;
 
