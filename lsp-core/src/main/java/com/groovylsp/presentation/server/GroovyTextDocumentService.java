@@ -1,12 +1,14 @@
 package com.groovylsp.presentation.server;
 
 import com.groovylsp.application.usecase.DiagnosticUseCase;
+import com.groovylsp.application.usecase.DocumentSymbolUseCase;
 import com.groovylsp.application.usecase.TextDocumentSyncUseCase;
 import com.groovylsp.domain.model.DiagnosticItem;
 import com.groovylsp.domain.model.DiagnosticResult;
 import com.groovylsp.domain.util.FileTypeUtil;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import org.eclipse.lsp4j.Diagnostic;
@@ -15,9 +17,13 @@ import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
+import org.eclipse.lsp4j.DocumentSymbol;
+import org.eclipse.lsp4j.DocumentSymbolParams;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.SymbolInformation;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageClientAware;
 import org.eclipse.lsp4j.services.TextDocumentService;
@@ -34,12 +40,16 @@ public class GroovyTextDocumentService implements TextDocumentService, LanguageC
   private @Nullable LanguageClient client;
   private final TextDocumentSyncUseCase syncUseCase;
   private final DiagnosticUseCase diagnosticUseCase;
+  private final DocumentSymbolUseCase documentSymbolUseCase;
 
   @Inject
   public GroovyTextDocumentService(
-      TextDocumentSyncUseCase syncUseCase, DiagnosticUseCase diagnosticUseCase) {
+      TextDocumentSyncUseCase syncUseCase,
+      DiagnosticUseCase diagnosticUseCase,
+      DocumentSymbolUseCase documentSymbolUseCase) {
     this.syncUseCase = syncUseCase;
     this.diagnosticUseCase = diagnosticUseCase;
+    this.documentSymbolUseCase = documentSymbolUseCase;
   }
 
   @Override
@@ -159,5 +169,25 @@ public class GroovyTextDocumentService implements TextDocumentService, LanguageC
       case INFORMATION -> DiagnosticSeverity.Information;
       case HINT -> DiagnosticSeverity.Hint;
     };
+  }
+
+  @Override
+  public CompletableFuture<List<Either<SymbolInformation, DocumentSymbol>>> documentSymbol(
+      DocumentSymbolParams params) {
+    return CompletableFuture.supplyAsync(
+        () -> {
+          var result = documentSymbolUseCase.getDocumentSymbols(params);
+          return result
+              .map(
+                  symbols ->
+                      symbols.stream()
+                          .map(symbol -> Either.<SymbolInformation, DocumentSymbol>forRight(symbol))
+                          .toList())
+              .getOrElse(
+                  () -> {
+                    logger.error("ドキュメントシンボルの取得に失敗しました: {}", params.getTextDocument().getUri());
+                    return List.of();
+                  });
+        });
   }
 }

@@ -39,11 +39,11 @@ export async function run(): Promise<void> {
       }
     });
 
-    // タイムアウト対策: 90秒でテストを強制終了
+    // タイムアウト対策: 180秒でテストを強制終了（多数のテストに対応）
     const timeout = setTimeout(() => {
       runner.abort();
-      reject(new Error('Test execution timeout after 90 seconds'));
-    }, 90000);
+      reject(new Error('Test execution timeout after 180 seconds'));
+    }, 180000);
 
     runner.on('end', () => {
       clearTimeout(timeout);

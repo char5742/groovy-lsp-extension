@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.groovylsp.application.usecase.DiagnosticUseCase;
+import com.groovylsp.application.usecase.DocumentSymbolUseCase;
 import com.groovylsp.application.usecase.TextDocumentSyncUseCase;
 import com.groovylsp.domain.model.TextDocument;
 import com.groovylsp.testing.FastTest;
@@ -32,14 +33,16 @@ class GroovyTextDocumentServiceTest {
   private GroovyTextDocumentService service;
   private TextDocumentSyncUseCase syncUseCase;
   private DiagnosticUseCase diagnosticUseCase;
+  private DocumentSymbolUseCase documentSymbolUseCase;
   private LanguageClient client;
 
   @BeforeEach
   void setUp() {
     syncUseCase = mock(TextDocumentSyncUseCase.class);
     diagnosticUseCase = mock(DiagnosticUseCase.class);
+    documentSymbolUseCase = mock(DocumentSymbolUseCase.class);
     client = mock(LanguageClient.class);
-    service = new GroovyTextDocumentService(syncUseCase, diagnosticUseCase);
+    service = new GroovyTextDocumentService(syncUseCase, diagnosticUseCase, documentSymbolUseCase);
     service.connect(client);
   }
 
