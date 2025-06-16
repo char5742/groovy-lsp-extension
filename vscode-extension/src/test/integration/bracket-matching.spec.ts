@@ -63,20 +63,13 @@ describe('括弧の対応チェック機能のテスト', () => {
     `;
 
     doc = await openDoc(code, 'groovy');
-    console.log('ドキュメントURI:', doc.uri.toString());
 
     // 診断が完全に完了するまで待つ
     await new Promise((resolve) => setTimeout(resolve, 5000));
 
     const diagnostics = vscode.languages.getDiagnostics(doc.uri);
-    console.log('診断数:', diagnostics.length);
-    diagnostics.forEach((d, i) => {
-      console.log(`診断[${i}]:`, {
-        message: d.message,
-        source: d.source,
-        severity: d.severity,
-        range: `${d.range.start.line}:${d.range.start.character}-${d.range.end.line}:${d.range.end.character}`,
-      });
+    diagnostics.forEach((_d, _i) => {
+      // 診断情報の詳細ログは必要に応じて追加
     });
 
     const bracketErrors = diagnostics.filter((d) => d.source === 'groovy-lsp-bracket-validation');

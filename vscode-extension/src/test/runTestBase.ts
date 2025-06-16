@@ -58,8 +58,7 @@ export async function runTestSuite(options: TestRunnerOptions): Promise<void> {
 
     // VS Codeをダウンロードし、解凍してテストを実行
     await Promise.race([testPromise, timeoutPromise]);
-  } catch (err) {
-    console.error('テスト実行中にエラーが発生しました:', err);
+  } catch (_err) {
     process.exit(1);
   }
 }
@@ -72,8 +71,7 @@ export function createTestRunner(options: TestRunnerOptions): void {
     .then(() => {
       process.exit(0);
     })
-    .catch((err) => {
-      console.error('テスト実行エラー:', err);
+    .catch((_err) => {
       process.exit(1);
     });
 }

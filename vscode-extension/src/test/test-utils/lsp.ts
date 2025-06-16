@@ -45,7 +45,7 @@ export async function closeDoc(doc: vscode.TextDocument): Promise<void> {
   if (doc.uri.scheme === 'file') {
     try {
       await fs.unlink(doc.uri.fsPath);
-    } catch (error) {
+    } catch (_error) {
       // ファイルが既に削除されている場合は無視
     }
   }

@@ -22,11 +22,8 @@ export async function run(): Promise<void> {
   // すべてのテストファイルを検索
   const files = await glob('**/*{.test,.spec}.js', { cwd: testsRoot });
 
-  console.log(`Found test files: ${files.length}`);
-  console.log('Test files:', files);
-
   if (grepPattern) {
-    console.log(`Running tests matching pattern: ${grepPattern}`);
+    // grep パターンは mocha に既に設定済み
   }
 
   // テストスイートにファイルを追加
@@ -46,7 +43,6 @@ export async function run(): Promise<void> {
 
     // タイムアウト対策: 60秒でテストを強制終了
     const timeout = setTimeout(() => {
-      console.error('テストがタイムアウトしました (60秒)');
       runner.abort();
       reject(new Error('Test execution timeout after 60 seconds'));
     }, 60000);
@@ -56,9 +52,9 @@ export async function run(): Promise<void> {
     });
 
     // 各テストのタイムアウトエラーをキャッチ
-    runner.on('fail', (test, err) => {
+    runner.on('fail', (_test, err) => {
       if (err.message?.includes('timeout')) {
-        console.error(`テストタイムアウト: ${test.fullTitle()}`);
+        // タイムアウトエラーはすでにログに記録されている
       }
     });
   });
