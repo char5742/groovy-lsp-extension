@@ -41,7 +41,7 @@ public class DocumentSymbolUseCase {
    */
   public Either<String, List<DocumentSymbol>> getDocumentSymbols(DocumentSymbolParams params) {
     String uri = params.getTextDocument().getUri();
-    logger.info("ドキュメントシンボルを取得: {}", uri);
+    logger.debug("ドキュメントシンボルを取得: {}", uri);
 
     return repository
         .findByUri(URI.create(uri))

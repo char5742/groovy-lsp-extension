@@ -119,17 +119,17 @@ class GroovySymbolExtractionServiceTest {
               symbol -> {
                 assertThat(symbol.name()).isEqualTo("name");
                 assertThat(symbol.kind()).isIn(SymbolKind.Field, SymbolKind.Property);
-                assertThat(symbol.detail()).isEqualTo("String");
+                assertThat(symbol.detail()).isEqualTo(": String");
               })
           .anySatisfy(
               symbol -> {
                 assertThat(symbol.name()).isEqualTo("age");
-                assertThat(symbol.detail()).isEqualTo("int");
+                assertThat(symbol.detail()).isEqualTo(": int");
               })
           .anySatisfy(
               symbol -> {
                 assertThat(symbol.name()).isEqualTo("address");
-                assertThat(symbol.detail()).isEqualTo("String");
+                assertThat(symbol.detail()).isEqualTo(": String");
               });
     }
   }
@@ -178,7 +178,8 @@ class GroovySymbolExtractionServiceTest {
               symbol -> {
                 assertThat(symbol.name()).isEqualTo("Thread");
                 assertThat(symbol.kind()).isEqualTo(SymbolKind.Class);
-                assertThat(symbol.detail()).contains("implements Runnable");
+                // 明示的にObjectを継承している場合は表示される
+                assertThat(symbol.detail()).isEqualTo(": extends Object implements Runnable");
               });
     }
   }

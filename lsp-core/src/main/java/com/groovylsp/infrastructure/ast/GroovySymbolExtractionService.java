@@ -29,6 +29,9 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
 
   private static final Logger logger = LoggerFactory.getLogger(GroovySymbolExtractionService.class);
 
+  /** シンボル名の推定文字数のデフォルト値 */
+  private static final int DEFAULT_SYMBOL_NAME_LENGTH = 10;
+
   private final GroovyAstParser parser;
 
   @Inject
@@ -134,9 +137,7 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
     // クラス名の開始位置は通常columnNumberから少し後ろにある
     int nameStartColumn = classNode.getColumnNumber();
     int nameEndColumn =
-        Math.min(
-            nameStartColumn + 10, // 安全なデフォルト値
-            classNode.getLastColumnNumber());
+        Math.min(nameStartColumn + DEFAULT_SYMBOL_NAME_LENGTH, classNode.getLastColumnNumber());
 
     // selectionRangeをclassRangeの内側に確実に収める
     Range selectionRange =
@@ -190,9 +191,7 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
 
     // selectionRangeがrangeに確実に含まれるようにする
     int nameEndColumn =
-        Math.min(
-            field.getColumnNumber() + 10, // 安全なデフォルト値
-            field.getLastColumnNumber());
+        Math.min(field.getColumnNumber() + DEFAULT_SYMBOL_NAME_LENGTH, field.getLastColumnNumber());
     Range selectionRange =
         createSafeSelectionRange(
             field.getLineNumber(),
@@ -201,7 +200,7 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
             nameEndColumn,
             range);
 
-    String detail = field.getType().getName();
+    String detail = formatTypeDetail(field.getType());
 
     return Symbol.create(field.getName(), SymbolKind.Field, range, selectionRange, detail);
   }
@@ -223,7 +222,7 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
     // selectionRangeがrangeに確実に含まれるようにする
     int nameEndColumn =
         Math.min(
-            property.getColumnNumber() + 10, // 安全なデフォルト値
+            property.getColumnNumber() + DEFAULT_SYMBOL_NAME_LENGTH,
             property.getLastColumnNumber());
     Range selectionRange =
         createSafeSelectionRange(
@@ -233,7 +232,7 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
             nameEndColumn,
             range);
 
-    String detail = property.getType().getName();
+    String detail = formatTypeDetail(property.getType());
 
     return Symbol.create(property.getName(), SymbolKind.Property, range, selectionRange, detail);
   }
@@ -255,8 +254,7 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
     // selectionRangeがrangeに確実に含まれるようにする
     int nameEndColumn =
         Math.min(
-            method.getColumnNumber() + 10, // 安全なデフォルト値
-            method.getLastColumnNumber());
+            method.getColumnNumber() + DEFAULT_SYMBOL_NAME_LENGTH, method.getLastColumnNumber());
     Range selectionRange =
         createSafeSelectionRange(
             method.getLineNumber(),
@@ -283,7 +281,7 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
     // 継承クラス
     ClassNode superClass = classNode.getSuperClass();
     if (superClass != null && !superClass.getName().equals("java.lang.Object")) {
-      detail.append("extends ").append(superClass.getName());
+      detail.append("extends ").append(superClass.getNameWithoutPackage());
     }
 
     // 実装インターフェース
@@ -297,11 +295,16 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
         if (i > 0) {
           detail.append(", ");
         }
-        detail.append(interfaces[i].getName());
+        detail.append(interfaces[i].getNameWithoutPackage());
       }
     }
 
-    return detail.toString();
+    // 詳細情報がある場合は先頭に ": " を追加して統一形式に
+    if (detail.length() > 0) {
+      return ": " + detail.toString();
+    }
+
+    return "";
   }
 
   /**
@@ -371,6 +374,21 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
     }
 
     return new Range(selStart, selEnd);
+  }
+
+  /**
+   * 型情報の詳細を統一形式でフォーマット
+   *
+   * @param type クラスノード
+   * @return フォーマットされた型情報
+   */
+  private String formatTypeDetail(ClassNode type) {
+    if (type == null) {
+      return "";
+    }
+    String typeName = type.getNameWithoutPackage();
+    // ジェネリクス対応の場合は将来ここで処理
+    return ": " + typeName;
   }
 
   /**
