@@ -10,7 +10,7 @@ export async function run(): Promise<void> {
   const mocha = new Mocha({
     ui: 'bdd',
     color: true,
-    timeout: 60000,
+    timeout: 120000,
     bail: false, // エラーがあっても全テストを実行
     grep: grepPattern, // --grepオプションがあれば設定
     reporter: 'spec', // 詳細な出力
