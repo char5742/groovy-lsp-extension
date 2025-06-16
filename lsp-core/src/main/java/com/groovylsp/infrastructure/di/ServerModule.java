@@ -9,7 +9,9 @@ import com.groovylsp.domain.service.AstAnalysisService;
 import com.groovylsp.domain.service.BracketValidationService;
 import com.groovylsp.domain.service.LineCountService;
 import com.groovylsp.domain.service.SymbolExtractionService;
+import com.groovylsp.domain.service.TypeInfoService;
 import com.groovylsp.infrastructure.ast.GroovySymbolExtractionService;
+import com.groovylsp.infrastructure.ast.GroovyTypeInfoService;
 import com.groovylsp.infrastructure.parser.GroovyAstParser;
 import com.groovylsp.infrastructure.repository.InMemoryTextDocumentRepository;
 import com.groovylsp.presentation.server.GroovyTextDocumentService;
@@ -60,6 +62,12 @@ public class ServerModule {
 
   @Provides
   @Singleton
+  public TypeInfoService provideTypeInfoService(GroovyAstParser parser) {
+    return new GroovyTypeInfoService(parser);
+  }
+
+  @Provides
+  @Singleton
   public DocumentSymbolUseCase provideDocumentSymbolUseCase(
       SymbolExtractionService symbolExtractionService, TextDocumentRepository repository) {
     return new DocumentSymbolUseCase(symbolExtractionService, repository);
@@ -67,8 +75,9 @@ public class ServerModule {
 
   @Provides
   @Singleton
-  public HoverUseCase provideHoverUseCase(TextDocumentRepository repository) {
-    return new HoverUseCase(repository);
+  public HoverUseCase provideHoverUseCase(
+      TextDocumentRepository repository, TypeInfoService typeInfoService) {
+    return new HoverUseCase(repository, typeInfoService);
   }
 
   @Provides

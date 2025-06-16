@@ -1,6 +1,7 @@
 package com.groovylsp.application.usecase;
 
 import com.groovylsp.domain.repository.TextDocumentRepository;
+import com.groovylsp.domain.service.TypeInfoService;
 import io.vavr.control.Either;
 import java.net.URI;
 import javax.inject.Inject;
@@ -23,10 +24,12 @@ public class HoverUseCase {
   private static final Logger logger = LoggerFactory.getLogger(HoverUseCase.class);
 
   private final TextDocumentRepository repository;
+  private final TypeInfoService typeInfoService;
 
   @Inject
-  public HoverUseCase(TextDocumentRepository repository) {
+  public HoverUseCase(TextDocumentRepository repository, TypeInfoService typeInfoService) {
     this.repository = repository;
+    this.typeInfoService = typeInfoService;
   }
 
   /**
@@ -46,16 +49,74 @@ public class HoverUseCase {
     return repository
         .findByUri(URI.create(uri))
         .toEither(() -> "ドキュメントが見つかりません: " + uri)
-        .map(
+        .flatMap(
             document -> {
-              // 現時点では固定テキストを返す
-              var content = new MarkupContent();
-              content.setKind(MarkupKind.PLAINTEXT);
-              content.setValue("Groovy element");
+              // 型情報を取得
+              Either<String, TypeInfoService.TypeInfo> typeInfoResult =
+                  typeInfoService.getTypeInfoAt(uri, document.content(), params.getPosition());
 
-              var hover = new Hover();
-              hover.setContents(content);
-              return hover;
+              if (typeInfoResult.isRight()) {
+                // 型情報が見つかった場合
+                TypeInfoService.TypeInfo typeInfo = typeInfoResult.get();
+                var content = new MarkupContent();
+                content.setKind(MarkupKind.MARKDOWN);
+                content.setValue(formatTypeInfo(typeInfo));
+
+                var hover = new Hover();
+                hover.setContents(content);
+                return Either.right(hover);
+              } else {
+                // 型情報が見つからない場合はデフォルトのテキストを返す
+                var content = new MarkupContent();
+                content.setKind(MarkupKind.PLAINTEXT);
+                content.setValue("Groovy element");
+
+                var hover = new Hover();
+                hover.setContents(content);
+                return Either.right(hover);
+              }
             });
+  }
+
+  /**
+   * 型情報をMarkdown形式でフォーマット
+   *
+   * @param typeInfo 型情報
+   * @return フォーマットされた文字列
+   */
+  private String formatTypeInfo(TypeInfoService.TypeInfo typeInfo) {
+    var sb = new StringBuilder();
+
+    // 型情報のヘッダー
+    if (typeInfo.modifiers() != null) {
+      sb.append("```groovy\n");
+      sb.append(typeInfo.modifiers()).append(" ");
+    } else {
+      sb.append("```groovy\n");
+    }
+
+    // 種類に応じたフォーマット
+    switch (typeInfo.kind()) {
+      case LOCAL_VARIABLE:
+      case FIELD:
+      case PARAMETER:
+        sb.append(typeInfo.type()).append(" ").append(typeInfo.name());
+        break;
+      case METHOD:
+        sb.append(typeInfo.type()); // メソッドの場合はシグネチャ全体が入っている
+        break;
+      case CLASS:
+        sb.append("class ").append(typeInfo.name());
+        break;
+    }
+
+    sb.append("\n```");
+
+    // ドキュメントがあれば追加
+    if (typeInfo.documentation() != null) {
+      sb.append("\n\n").append(typeInfo.documentation());
+    }
+
+    return sb.toString();
   }
 }
