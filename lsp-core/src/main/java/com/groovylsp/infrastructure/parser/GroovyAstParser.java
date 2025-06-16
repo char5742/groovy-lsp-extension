@@ -2,8 +2,11 @@ package com.groovylsp.infrastructure.parser;
 
 import groovy.lang.GroovyClassLoader;
 import io.vavr.control.Either;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.codehaus.groovy.ast.ClassNode;
 import org.codehaus.groovy.ast.ModuleNode;
 import org.codehaus.groovy.control.CompilationUnit;
@@ -16,30 +19,32 @@ import org.codehaus.groovy.control.messages.SyntaxErrorMessage;
 import org.codehaus.groovy.syntax.SyntaxException;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Groovy公式パーサーを使用したAST解析器
  *
  * <p>このクラスはGroovyソースコードを解析し、抽象構文木（AST）を生成します。 LSPの各機能（診断、補完、定義ジャンプなど）で使用されます。
+ *
+ * <p>スレッドセーフ: このクラスのインスタンスは複数のスレッドから安全に使用できます。 内部的に各パース操作は独立したCompilationUnitで実行されます。
  */
 @NullMarked
-public class GroovyAstParser {
+public class GroovyAstParser implements AutoCloseable {
 
-  private final CompilerConfiguration config;
-  private final GroovyClassLoader classLoader;
+  private static final Logger logger = LoggerFactory.getLogger(GroovyAstParser.class);
 
+  private final ParserConfiguration configuration;
+  private final Map<Thread, GroovyClassLoader> threadLocalClassLoaders = new ConcurrentHashMap<>();
+
+  /** デフォルト設定でパーサーを作成 */
   public GroovyAstParser() {
-    this.config = new CompilerConfiguration();
-    // Parrot parser（Groovy 3.0+のデフォルト）を明示的に使用
-    config.getOptimizationOptions().put("groovydoc", false);
-    config.setTolerance(Integer.MAX_VALUE); // エラーがあっても解析を続行
+    this(ParserConfiguration.defaultConfig());
+  }
 
-    // GroovyClassLoaderの初期化時に親クラスローダーを明示的に指定
-    ClassLoader parentClassLoader = Thread.currentThread().getContextClassLoader();
-    if (parentClassLoader == null) {
-      parentClassLoader = GroovyAstParser.class.getClassLoader();
-    }
-    this.classLoader = new GroovyClassLoader(parentClassLoader, config);
+  /** カスタム設定でパーサーを作成 */
+  public GroovyAstParser(ParserConfiguration configuration) {
+    this.configuration = configuration;
   }
 
   /**
@@ -52,10 +57,20 @@ public class GroovyAstParser {
   public Either<ParseError, ParseResult> parse(String fileName, String sourceCode) {
     List<ParseDiagnostic> diagnostics = new ArrayList<>();
 
+    // スレッドごとに独立したClassLoaderを使用
+    var classLoader = getOrCreateClassLoader();
+
     try {
-      var compilationUnit = new CompilationUnit(config, null, classLoader);
-      var errorCollector = new ErrorCollector(config);
-      var sourceUnit = new SourceUnit(fileName, sourceCode, config, classLoader, errorCollector);
+      var compilationUnit =
+          new CompilationUnit(configuration.toCompilerConfiguration(), null, classLoader);
+      var errorCollector = new ErrorCollector(configuration.toCompilerConfiguration());
+      var sourceUnit =
+          new SourceUnit(
+              fileName,
+              sourceCode,
+              configuration.toCompilerConfiguration(),
+              classLoader,
+              errorCollector);
       compilationUnit.addSource(sourceUnit);
 
       // フェーズ2（CONVERSION）まで実行してASTを生成
@@ -74,9 +89,8 @@ public class GroovyAstParser {
             diagnostics.add(
                 new ParseDiagnostic(
                     cause.getMessage(),
-                    cause.getLine(),
-                    cause.getStartColumn(),
-                    cause.getEndColumn(),
+                    Position.fromLineColumn(cause.getLine(), cause.getStartColumn()),
+                    Position.fromLineColumn(cause.getLine(), cause.getEndColumn()),
                     ParseDiagnostic.Severity.ERROR));
           }
         }
@@ -91,9 +105,8 @@ public class GroovyAstParser {
             diagnostics.add(
                 new ParseDiagnostic(
                     cause.getMessage(),
-                    cause.getLine(),
-                    cause.getStartColumn(),
-                    cause.getEndColumn(),
+                    Position.fromLineColumn(cause.getLine(), cause.getStartColumn()),
+                    Position.fromLineColumn(cause.getLine(), cause.getEndColumn()),
                     ParseDiagnostic.Severity.WARNING));
           }
         }
@@ -107,17 +120,30 @@ public class GroovyAstParser {
     }
   }
 
+  /** スレッドローカルなClassLoaderを取得または作成 */
+  private GroovyClassLoader getOrCreateClassLoader() {
+    return threadLocalClassLoaders.computeIfAbsent(
+        Thread.currentThread(),
+        thread -> {
+          ClassLoader parentClassLoader = thread.getContextClassLoader();
+          if (parentClassLoader == null) {
+            parentClassLoader = GroovyAstParser.class.getClassLoader();
+          }
+          return new GroovyClassLoader(parentClassLoader, configuration.toCompilerConfiguration());
+        });
+  }
+
   /** 解析結果 */
   public record ParseResult(ModuleNode moduleNode, List<ParseDiagnostic> diagnostics) {
     /** すべてのクラスノードを取得 */
     public List<ClassNode> getClasses() {
-      return new ArrayList<>(moduleNode.getClasses());
+      var classes = moduleNode.getClasses();
+      return classes != null ? new ArrayList<>(classes) : List.of();
     }
   }
 
   /** 解析診断情報 */
-  public record ParseDiagnostic(
-      String message, int line, int startColumn, int endColumn, Severity severity) {
+  public record ParseDiagnostic(String message, Position start, Position end, Severity severity) {
     public enum Severity {
       ERROR,
       WARNING,
@@ -125,6 +151,61 @@ public class GroovyAstParser {
     }
   }
 
+  /** 位置情報（LSP準拠） */
+  public record Position(int line, int character, int offset) {
+    /** 行と列から位置情報を作成（オフセットは不明） */
+    public static Position fromLineColumn(int line, int column) {
+      return new Position(line, column, -1);
+    }
+  }
+
   /** 解析エラー */
   public record ParseError(String message, @Nullable Throwable cause) {}
+
+  /** パーサー設定 */
+  public record ParserConfiguration(
+      int tolerance, boolean optimizeGroovydoc, Map<String, Object> additionalOptions) {
+
+    /** デフォルト設定を取得 */
+    public static ParserConfiguration defaultConfig() {
+      return new ParserConfiguration(
+          Integer.MAX_VALUE, // エラーがあっても解析を続行
+          false, // groovydocの最適化を無効化
+          Map.of() // 追加オプションなし
+          );
+    }
+
+    /** CompilerConfigurationに変換 */
+    public CompilerConfiguration toCompilerConfiguration() {
+      var config = new CompilerConfiguration();
+      config.setTolerance(tolerance);
+      config.getOptimizationOptions().put("groovydoc", optimizeGroovydoc);
+      additionalOptions.forEach(
+          (key, value) -> {
+            if (value instanceof Boolean) {
+              config.getOptimizationOptions().put(key, (Boolean) value);
+            } else {
+              // 他の型のオプションは文字列として扱う
+              config.getOptimizationOptions().put(key, Boolean.valueOf(value.toString()));
+            }
+          });
+      return config;
+    }
+  }
+
+  @Override
+  public void close() {
+    // すべてのスレッドローカルなClassLoaderをクローズ
+    threadLocalClassLoaders
+        .values()
+        .forEach(
+            classLoader -> {
+              try {
+                classLoader.close();
+              } catch (IOException e) {
+                logger.warn("GroovyClassLoaderのクローズ中にエラーが発生しました", e);
+              }
+            });
+    threadLocalClassLoaders.clear();
+  }
 }

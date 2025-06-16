@@ -116,12 +116,21 @@ implementation 'org.apache.groovy:groovy:4.0.25'
 - 診断情報（エラー・警告）の収集
 - Spock構文を含むGroovy言語機能の完全サポート
 
-### 5.3 テスト結果
+### 5.3 改善点
+- **リソース管理**: AutoCloseableを実装し、GroovyClassLoaderのリソースリークを防止
+- **スレッドセーフティ**: スレッドローカルなClassLoaderで並行アクセスに対応
+- **null安全性**: getClasses()メソッドでnullチェックを追加
+- **位置情報の精度**: LSP準拠のPosition recordを追加（行・列・オフセット）
+- **設定の拡張性**: ParserConfigurationで動的な設定変更をサポート
+
+### 5.4 テスト結果
 全てのテストケースが成功:
 - 基本的なGroovyコードの解析
 - Spock特有の構文の解析
 - エラー処理とリカバリー
 - Groovy固有の機能（クロージャ、GString等）
+- スレッドセーフティとリソース管理
+- カスタム設定での動作
 
 ## 6. 今後の統合計画
 1. 既存のGroovyLexerとの統合検討

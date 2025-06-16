@@ -5,8 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.groovylsp.testing.FastTest;
 import io.vavr.control.Either;
 import java.util.List;
+import java.util.Map;
 import org.codehaus.groovy.ast.ClassNode;
 import org.codehaus.groovy.ast.MethodNode;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -21,6 +23,13 @@ class GroovyAstParserTest {
   @BeforeEach
   void setUp() {
     parser = new GroovyAstParser();
+  }
+
+  @AfterEach
+  void tearDown() throws Exception {
+    if (parser != null) {
+      parser.close();
+    }
   }
 
   @Nested
@@ -195,6 +204,10 @@ class GroovyAstParserTest {
               diagnostic -> {
                 assertThat(diagnostic.severity())
                     .isEqualTo(GroovyAstParser.ParseDiagnostic.Severity.ERROR);
+                // Position情報も検証
+                assertThat(diagnostic.start()).isNotNull();
+                assertThat(diagnostic.end()).isNotNull();
+                assertThat(diagnostic.start().line()).isPositive();
               });
     }
 
@@ -278,6 +291,85 @@ class GroovyAstParserTest {
       // then
       assertThat(result.isRight()).isTrue();
       assertThat(result.get().diagnostics()).isEmpty();
+    }
+  }
+
+  @Nested
+  @DisplayName("設定とリソース管理")
+  class ConfigurationAndResourceManagement {
+
+    @Test
+    @DisplayName("カスタム設定でパーサーを作成できる")
+    void customConfiguration() {
+      // given
+      var customConfig =
+          new GroovyAstParser.ParserConfiguration(
+              1, // 1つのエラーで停止
+              true, // groovydoc最適化を有効
+              Map.of("customOption", "value"));
+
+      // when
+      try (var customParser = new GroovyAstParser(customConfig)) {
+        var result = customParser.parse("test.groovy", "println 'test'");
+
+        // then
+        assertThat(result.isRight()).isTrue();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Test
+    @DisplayName("null安全性: getClasses()がnullを返さない")
+    void nullSafetyInGetClasses() {
+      // given
+      String emptySource = "";
+
+      // when
+      var result = parser.parse("empty.groovy", emptySource);
+
+      // then
+      assertThat(result.isRight()).isTrue();
+      assertThat(result.get().getClasses()).isNotNull();
+      // 空のソースでもGroovyは暗黙的にScriptクラスを生成する
+      assertThat(result.get().getClasses()).hasSize(1);
+      assertThat(result.get().getClasses().get(0).getName()).isEqualTo("empty");
+    }
+
+    @Test
+    @DisplayName("スレッドセーフティ: 複数スレッドから同時に使用できる")
+    void threadSafety() throws InterruptedException {
+      // given
+      int threadCount = 10;
+      var threads = new Thread[threadCount];
+      var results = new Either[threadCount];
+
+      // when
+      for (int i = 0; i < threadCount; i++) {
+        int index = i;
+        threads[i] =
+            new Thread(
+                () -> {
+                  results[index] =
+                      parser.parse(
+                          "thread" + index + ".groovy",
+                          "class Thread" + index + " { void run() {} }");
+                });
+        threads[i].start();
+      }
+
+      // すべてのスレッドの完了を待つ
+      for (Thread thread : threads) {
+        thread.join();
+      }
+
+      // then
+      for (int i = 0; i < threadCount; i++) {
+        assertThat(results[i].isRight()).isTrue();
+        var parseResult = (GroovyAstParser.ParseResult) results[i].get();
+        assertThat(parseResult.getClasses()).hasSize(1);
+        assertThat(parseResult.getClasses().get(0).getName()).isEqualTo("Thread" + i);
+      }
     }
   }
 }
