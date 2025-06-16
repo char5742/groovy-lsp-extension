@@ -3,7 +3,9 @@ package com.groovylsp.application.usecase;
 import com.groovylsp.domain.model.DiagnosticItem;
 import com.groovylsp.domain.model.DiagnosticResult;
 import com.groovylsp.domain.model.TextDocument;
+import com.groovylsp.domain.service.BracketValidationService;
 import com.groovylsp.domain.service.LineCountService;
+import com.groovylsp.infrastructure.lexer.GroovyLexer;
 import io.vavr.control.Either;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,10 +20,13 @@ public class DiagnosticUseCase {
 
   private static final Logger logger = LoggerFactory.getLogger(DiagnosticUseCase.class);
   private final LineCountService lineCountService;
+  private final BracketValidationService bracketValidationService;
 
   @Inject
-  public DiagnosticUseCase(LineCountService lineCountService) {
+  public DiagnosticUseCase(
+      LineCountService lineCountService, BracketValidationService bracketValidationService) {
     this.lineCountService = lineCountService;
+    this.bracketValidationService = bracketValidationService;
   }
 
   /**
@@ -51,6 +56,21 @@ public class DiagnosticUseCase {
                       "groovy-lsp-line-count");
 
               diagnostics.add(lineCountItem);
+
+              // Phase 2 M2.3: 括弧の対応チェック
+              var lexer = new GroovyLexer(document.content());
+              var tokenResult = lexer.tokenize();
+
+              tokenResult
+                  .map(
+                      tokens -> {
+                        var bracketValidationResult = bracketValidationService.validate(tokens);
+                        return bracketValidationResult
+                            .getOrElse(io.vavr.collection.List.empty())
+                            .toJavaList();
+                      })
+                  .peek(diagnostics::addAll)
+                  .peekLeft(error -> logger.error("Failed to tokenize document: {}", error));
 
               var diagnosticResult = new DiagnosticResult(document.uri(), diagnostics);
               logger.info(
