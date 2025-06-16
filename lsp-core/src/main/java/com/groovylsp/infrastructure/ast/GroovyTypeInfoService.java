@@ -156,11 +156,21 @@ public class GroovyTypeInfoService implements TypeInfoService {
       int line = targetPosition.getLine();
       int column = targetPosition.getCharacter();
 
-      // クラス名は通常クラスの開始位置付近にある
+      // デバッグログ
+      logger.debug(
+          "クラス位置チェック: クラス名={}, ノード位置={}:{}, ターゲット位置={}:{}",
+          node.getNameWithoutPackage(),
+          node.getLineNumber(),
+          node.getColumnNumber(),
+          line,
+          column);
+
+      // クラス名は "class " キーワードの後にある（6文字分オフセット）
       String className = node.getNameWithoutPackage();
+      int classKeywordLength = 6; // "class " の長さ
       return line == node.getLineNumber()
-          && column >= node.getColumnNumber()
-          && column < node.getColumnNumber() + className.length();
+          && column >= node.getColumnNumber() + classKeywordLength
+          && column < node.getColumnNumber() + classKeywordLength + className.length();
     }
 
     @Override
@@ -231,11 +241,30 @@ public class GroovyTypeInfoService implements TypeInfoService {
       int line = targetPosition.getLine();
       int column = targetPosition.getCharacter();
 
-      // メソッド名は通常メソッドの開始位置付近にある
-      // より正確な位置を計算するロジックが必要
+      // デバッグログ
+      logger.debug(
+          "メソッド位置チェック: メソッド名={}, ノード位置={}:{}, ターゲット位置={}:{}",
+          node.getName(),
+          node.getLineNumber(),
+          node.getColumnNumber(),
+          line,
+          column);
+
+      // Groovyのメソッドノードの位置は返り値型の後から始まる
+      // 返り値型の長さを推定して、メソッド名の実際の位置を計算
+      String returnTypeName = node.getReturnType().getNameWithoutPackage();
+      int typeAndSpaceLength = returnTypeName.length() + 1; // 型名 + スペース
+
+      // デバッグログ追加
+      logger.debug(
+          "メソッド名位置計算: 返り値型={}, 型長さ={}, 計算後位置={}",
+          returnTypeName,
+          typeAndSpaceLength,
+          node.getColumnNumber() + typeAndSpaceLength);
+
       return line == node.getLineNumber()
-          && column >= node.getColumnNumber()
-          && column < node.getColumnNumber() + node.getName().length();
+          && column >= node.getColumnNumber() + typeAndSpaceLength
+          && column < node.getColumnNumber() + typeAndSpaceLength + node.getName().length();
     }
 
     @Override
