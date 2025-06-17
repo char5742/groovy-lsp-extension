@@ -9,7 +9,9 @@ import com.groovylsp.infrastructure.parser.GroovyAstParser;
 import io.vavr.control.Either;
 import io.vavr.control.Option;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import org.codehaus.groovy.ast.ASTNode;
@@ -20,8 +22,13 @@ import org.codehaus.groovy.ast.GenericsType;
 import org.codehaus.groovy.ast.MethodNode;
 import org.codehaus.groovy.ast.ModuleNode;
 import org.codehaus.groovy.ast.Parameter;
+import org.codehaus.groovy.ast.expr.BinaryExpression;
+import org.codehaus.groovy.ast.expr.ClosureExpression;
+import org.codehaus.groovy.ast.expr.ConstantExpression;
 import org.codehaus.groovy.ast.expr.DeclarationExpression;
 import org.codehaus.groovy.ast.expr.Expression;
+import org.codehaus.groovy.ast.expr.MethodCallExpression;
+import org.codehaus.groovy.ast.expr.PropertyExpression;
 import org.codehaus.groovy.ast.expr.VariableExpression;
 import org.codehaus.groovy.ast.stmt.BlockStatement;
 import org.codehaus.groovy.ast.stmt.ExpressionStatement;
@@ -159,11 +166,21 @@ public class GroovyTypeInfoService implements TypeInfoService {
             content -> {
               String[] lines = content.split("\n");
               if (position.getLine() >= lines.length) {
+                logger.debug("行番号が範囲外: {} >= {}", position.getLine(), lines.length);
                 return "";
               }
 
               String line = lines[position.getLine()];
               int pos = position.getCharacter();
+
+              logger.debug(
+                  "getWordAtPosition - 行: {}, 位置: {}, 行内容: '{}'", position.getLine(), pos, line);
+
+              // 行の長さチェック
+              if (pos > line.length()) {
+                logger.debug("文字位置が行長を超えています: {} > {}", pos, line.length());
+                return "";
+              }
 
               // 単語の開始位置を見つける
               int start = pos;
@@ -177,7 +194,9 @@ public class GroovyTypeInfoService implements TypeInfoService {
                 end++;
               }
 
-              return line.substring(start, end);
+              String word = line.substring(start, end);
+              logger.debug("取得した単語: '{}'", word);
+              return word;
             });
   }
 
@@ -258,6 +277,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
     private final Position targetPosition;
     private final String uri;
     private @Nullable TypeInfo foundTypeInfo;
+    private final Map<String, ClassNode> variableTypes = new HashMap<>(); // 変数名と型のマッピング
 
     public TypeInfoVisitor(Position targetPosition, String uri) {
       // LSPの位置は0ベース、Groovyは1ベースなので+1で変換
@@ -282,6 +302,17 @@ public class GroovyTypeInfoService implements TypeInfoService {
         return; // 既に見つかっている
       }
 
+      // クラスのすべてのフィールドの型情報を事前に記録
+      // （メソッド内からフィールドを参照する際に必要）
+      for (FieldNode field : node.getFields()) {
+        variableTypes.put(field.getName(), field.getType());
+        logger.debug(
+            "クラス {} のフィールドを事前記録: {} (型: {})",
+            node.getName(),
+            field.getName(),
+            field.getType().getName());
+      }
+
       // まず子要素（フィールドとメソッド）をチェック
       // フィールドをチェック
       for (FieldNode field : node.getFields()) {
@@ -291,8 +322,22 @@ public class GroovyTypeInfoService implements TypeInfoService {
         }
       }
 
+      // コンストラクタをチェック
+      for (MethodNode constructor : node.getDeclaredConstructors()) {
+        logger.debug("クラス {} のコンストラクタを訪問: {}", node.getName(), constructor.getName());
+        visitMethod(constructor);
+        if (foundTypeInfo != null) {
+          return;
+        }
+      }
+
       // メソッドをチェック
       for (MethodNode method : node.getMethods()) {
+        logger.debug(
+            "クラス {} のメソッドを訪問: {} (isConstructor: {})",
+            node.getName(),
+            method.getName(),
+            method.getName().equals("<init>"));
         visitMethod(method);
         if (foundTypeInfo != null) {
           return;
@@ -361,10 +406,20 @@ public class GroovyTypeInfoService implements TypeInfoService {
         return;
       }
 
+      logger.debug(
+          "visitMethod: {} (isConstructor: {}) at {}:{}",
+          node.getName(),
+          node.getName().equals("<init>"),
+          node.getLineNumber(),
+          node.getColumnNumber());
+
       // パラメータをチェック
       Parameter[] parameters = node.getParameters();
       if (parameters != null) {
         for (Parameter param : parameters) {
+          // パラメータの型情報も記録
+          variableTypes.put(param.getName(), param.getType());
+
           if (isPositionWithin(param)) {
             foundTypeInfo =
                 new TypeInfo(
@@ -385,14 +440,29 @@ public class GroovyTypeInfoService implements TypeInfoService {
       }
 
       // 子要素で見つからなかった場合、メソッド名の位置をチェック
-      if (foundTypeInfo == null && isPositionWithinMethodName(node)) {
-        foundTypeInfo =
-            new TypeInfo(
-                node.getName(),
-                formatMethodSignature(node),
-                TypeInfo.Kind.METHOD,
-                null,
-                getModifiersString(node.getModifiers()));
+      if (foundTypeInfo == null) {
+        // コンストラクタの場合は特別な処理
+        if (node.getName().equals("<init>")) {
+          ClassNode declaringClass = node.getDeclaringClass();
+          // コンストラクタ名は実際にはクラス名と同じ位置にある
+          if (isPositionWithinConstructorName(declaringClass, node)) {
+            foundTypeInfo =
+                new TypeInfo(
+                    declaringClass.getNameWithoutPackage(),
+                    formatConstructorSignature(declaringClass, node),
+                    TypeInfo.Kind.METHOD,
+                    "コンストラクタ",
+                    getModifiersString(node.getModifiers()));
+          }
+        } else if (isPositionWithinMethodName(node)) {
+          foundTypeInfo =
+              new TypeInfo(
+                  node.getName(),
+                  formatMethodSignature(node),
+                  TypeInfo.Kind.METHOD,
+                  null,
+                  getModifiersString(node.getModifiers()));
+        }
       }
     }
 
@@ -453,43 +523,53 @@ public class GroovyTypeInfoService implements TypeInfoService {
       }
 
       Expression expr = statement.getExpression();
-      if (expr instanceof DeclarationExpression) {
-        visitDeclarationExpression((DeclarationExpression) expr);
-      } else {
-        expr.visit(this);
-      }
+      logger.debug(
+          "式のタイプ: {} at {}:{}",
+          expr != null ? expr.getClass().getSimpleName() : "null",
+          expr != null ? expr.getLineNumber() : 0,
+          expr != null ? expr.getColumnNumber() : 0);
+      // DeclarationExpressionも含めて、すべての式を訪問する
+      expr.visit(this);
     }
 
     @Override
     public void visitDeclarationExpression(DeclarationExpression expression) {
-      if (foundTypeInfo != null) {
-        return;
-      }
-
       // 変数宣言の処理
       Expression leftExpression = expression.getLeftExpression();
       if (leftExpression instanceof VariableExpression) {
         var varExpr = (VariableExpression) leftExpression;
 
+        // 変数の型情報を記録（後で参照時に使用）
+        ClassNode declaredType = varExpr.getType();
+        if (declaredType != null && !declaredType.getName().equals("java.lang.Object")) {
+          variableTypes.put(varExpr.getName(), declaredType);
+        }
+
         // デバッグログ
         logger.debug(
-            "検査中の変数: {} at {}:{}-{}:{}",
+            "変数宣言を記録: {} (型: {}) at {}:{}-{}:{}",
             varExpr.getName(),
+            declaredType != null ? declaredType.getName() : "null",
             varExpr.getLineNumber(),
             varExpr.getColumnNumber(),
             varExpr.getLastLineNumber(),
             varExpr.getLastColumnNumber());
-        logger.debug("ターゲット位置: {}:{}", targetPosition.getLine(), targetPosition.getCharacter());
 
-        if (isPositionWithin(varExpr)) {
+        if (foundTypeInfo == null && isPositionWithin(varExpr)) {
           foundTypeInfo =
               new TypeInfo(
                   varExpr.getName(),
-                  formatTypeName(varExpr.getType()),
+                  formatTypeName(declaredType),
                   TypeInfo.Kind.LOCAL_VARIABLE,
                   null,
                   null);
         }
+      }
+
+      // 右辺の式も訪問（変数参照が含まれている可能性がある）
+      Expression rightExpression = expression.getRightExpression();
+      if (rightExpression != null && foundTypeInfo == null) {
+        rightExpression.visit(this);
       }
     }
 
@@ -501,8 +581,22 @@ public class GroovyTypeInfoService implements TypeInfoService {
 
       // 変数参照の処理
       if (isPositionWithin(expression)) {
-        // まずシンボルテーブルから詳細情報を取得
         String varName = expression.getName();
+
+        // まず記録された変数宣言から型情報を探す
+        ClassNode recordedType = variableTypes.get(varName);
+        ClassNode typeToUse = recordedType != null ? recordedType : expression.getType();
+
+        // デバッグログ
+        logger.debug(
+            "変数参照: {} (記録された型: {}, 式の型: {}) at {}:{}",
+            varName,
+            recordedType != null ? recordedType.getName() : "なし",
+            expression.getType().getName(),
+            expression.getLineNumber(),
+            expression.getColumnNumber());
+
+        // シンボルテーブルから詳細情報を取得
         Option<SymbolDefinition> symbolOption =
             scopeManager.findSymbolAt(
                 uri,
@@ -517,10 +611,239 @@ public class GroovyTypeInfoService implements TypeInfoService {
         foundTypeInfo =
             new TypeInfo(
                 expression.getName(),
-                formatTypeName(expression.getType()),
+                formatTypeName(typeToUse),
                 TypeInfo.Kind.LOCAL_VARIABLE,
                 documentation,
                 null);
+      }
+    }
+
+    @Override
+    public void visitMethodCallExpression(MethodCallExpression call) {
+      if (foundTypeInfo != null) {
+        return;
+      }
+
+      logger.debug(
+          "visitMethodCallExpression: {} at {}:{}",
+          call.getMethodAsString(),
+          call.getLineNumber(),
+          call.getColumnNumber());
+
+      // メソッド呼び出しの処理
+      Expression method = call.getMethod();
+      logger.debug("メソッド式のタイプ: {}", method != null ? method.getClass().getName() : "null");
+
+      // ConstantExpressionの場合も処理
+      if (method instanceof ConstantExpression) {
+        var constExpr = (ConstantExpression) method;
+
+        // デバッグ: 定数式の位置情報
+        logger.debug(
+            "定数式の位置: {}:{}-{}:{}, ターゲット位置: {}:{}, 値: {}",
+            constExpr.getLineNumber(),
+            constExpr.getColumnNumber(),
+            constExpr.getLastLineNumber(),
+            constExpr.getLastColumnNumber(),
+            targetPosition.getLine(),
+            targetPosition.getCharacter(),
+            constExpr.getValue());
+
+        if (isPositionWithin(constExpr)) {
+          String methodName = constExpr.getValue().toString();
+
+          // シンボルテーブルから検索
+          Option<SymbolDefinition> symbolOption =
+              scopeManager.findSymbolAt(
+                  uri,
+                  new Position(targetPosition.getLine() - 1, targetPosition.getCharacter() - 1),
+                  methodName);
+
+          if (symbolOption.isDefined()) {
+            foundTypeInfo = createTypeInfoFromSymbol(symbolOption.get());
+          } else {
+            // メソッド呼び出しとして扱う
+            foundTypeInfo = new TypeInfo(methodName, "メソッド呼び出し", TypeInfo.Kind.METHOD, null, null);
+          }
+          return;
+        }
+      } else if (method instanceof VariableExpression) {
+        var methodExpr = (VariableExpression) method;
+
+        // デバッグ: メソッド式の位置情報
+        logger.debug(
+            "メソッド式の位置: {}:{}-{}:{}, ターゲット位置: {}:{}",
+            methodExpr.getLineNumber(),
+            methodExpr.getColumnNumber(),
+            methodExpr.getLastLineNumber(),
+            methodExpr.getLastColumnNumber(),
+            targetPosition.getLine(),
+            targetPosition.getCharacter());
+
+        if (isPositionWithin(methodExpr)) {
+          // メソッド名から定義を探す
+          String methodName = methodExpr.getName();
+
+          // シンボルテーブルから検索
+          Option<SymbolDefinition> symbolOption =
+              scopeManager.findSymbolAt(
+                  uri,
+                  new Position(targetPosition.getLine() - 1, targetPosition.getCharacter() - 1),
+                  methodName);
+
+          if (symbolOption.isDefined()) {
+            foundTypeInfo = createTypeInfoFromSymbol(symbolOption.get());
+          } else {
+            // メソッド呼び出しとして扱う
+            foundTypeInfo = new TypeInfo(methodName, "メソッド呼び出し", TypeInfo.Kind.METHOD, null, null);
+          }
+          return;
+        }
+      }
+
+      // 子要素を訪問
+      super.visitMethodCallExpression(call);
+    }
+
+    @Override
+    public void visitBinaryExpression(BinaryExpression expression) {
+      if (foundTypeInfo != null) {
+        return;
+      }
+
+      // 左辺（代入の対象）を訪問
+      Expression leftExpression = expression.getLeftExpression();
+      leftExpression.visit(this);
+
+      if (foundTypeInfo == null) {
+        // 右辺も訪問
+        Expression rightExpression = expression.getRightExpression();
+        rightExpression.visit(this);
+      }
+    }
+
+    @Override
+    public void visitPropertyExpression(PropertyExpression expression) {
+      if (foundTypeInfo != null) {
+        return;
+      }
+
+      logger.debug(
+          "visitPropertyExpression: {} at {}:{}",
+          expression.getPropertyAsString(),
+          expression.getLineNumber(),
+          expression.getColumnNumber());
+
+      // プロパティアクセスの処理（this.name など）
+      Expression property = expression.getProperty();
+      logger.debug("プロパティのタイプ: {}", property != null ? property.getClass().getName() : "null");
+
+      if (property instanceof ConstantExpression) {
+        var constProp = (ConstantExpression) property;
+        logger.debug(
+            "プロパティ定数式の位置: {}:{}-{}:{}, ターゲット位置: {}:{}, 値: {}",
+            constProp.getLineNumber(),
+            constProp.getColumnNumber(),
+            constProp.getLastLineNumber(),
+            constProp.getLastColumnNumber(),
+            targetPosition.getLine(),
+            targetPosition.getCharacter(),
+            constProp.getValue());
+
+        if (isPositionWithin(constProp)) {
+          String propName = constProp.getValue().toString();
+
+          // フィールドとして記録されているか確認
+          ClassNode recordedType = variableTypes.get(propName);
+          if (recordedType != null) {
+            foundTypeInfo =
+                new TypeInfo(
+                    propName, formatTypeName(recordedType), TypeInfo.Kind.FIELD, null, null);
+          } else {
+            // シンボルテーブルから検索
+            Option<SymbolDefinition> symbolOption =
+                scopeManager.findSymbolAt(
+                    uri,
+                    new Position(targetPosition.getLine() - 1, targetPosition.getCharacter() - 1),
+                    propName);
+
+            if (symbolOption.isDefined()) {
+              foundTypeInfo = createTypeInfoFromSymbol(symbolOption.get());
+            }
+          }
+          return;
+        }
+      } else if (property instanceof VariableExpression) {
+        var propExpr = (VariableExpression) property;
+
+        logger.debug(
+            "プロパティ式の位置: {}:{}-{}:{}, ターゲット位置: {}:{}",
+            propExpr.getLineNumber(),
+            propExpr.getColumnNumber(),
+            propExpr.getLastLineNumber(),
+            propExpr.getLastColumnNumber(),
+            targetPosition.getLine(),
+            targetPosition.getCharacter());
+
+        if (isPositionWithin(propExpr)) {
+          String propName = propExpr.getName();
+
+          // フィールドとして記録されているか確認
+          ClassNode recordedType = variableTypes.get(propName);
+          if (recordedType != null) {
+            foundTypeInfo =
+                new TypeInfo(
+                    propName, formatTypeName(recordedType), TypeInfo.Kind.FIELD, null, null);
+          } else {
+            // シンボルテーブルから検索
+            Option<SymbolDefinition> symbolOption =
+                scopeManager.findSymbolAt(
+                    uri,
+                    new Position(targetPosition.getLine() - 1, targetPosition.getCharacter() - 1),
+                    propName);
+
+            if (symbolOption.isDefined()) {
+              foundTypeInfo = createTypeInfoFromSymbol(symbolOption.get());
+            }
+          }
+          return;
+        }
+      }
+
+      // 子要素を訪問
+      super.visitPropertyExpression(expression);
+    }
+
+    @Override
+    public void visitClosureExpression(ClosureExpression expression) {
+      if (foundTypeInfo != null) {
+        return;
+      }
+
+      // クロージャパラメータの処理
+      Parameter[] parameters = expression.getParameters();
+      if (parameters != null) {
+        for (Parameter param : parameters) {
+          // パラメータの型情報を記録
+          variableTypes.put(param.getName(), param.getType());
+
+          if (isPositionWithin(param)) {
+            foundTypeInfo =
+                new TypeInfo(
+                    param.getName(),
+                    formatTypeName(param.getType()),
+                    TypeInfo.Kind.PARAMETER,
+                    "クロージャパラメータ",
+                    null);
+            return;
+          }
+        }
+      }
+
+      // クロージャ本体を訪問
+      Statement code = expression.getCode();
+      if (code != null) {
+        code.visit(this);
       }
     }
 
@@ -641,6 +964,34 @@ public class GroovyTypeInfoService implements TypeInfoService {
     }
 
     /**
+     * コンストラクタシグネチャをフォーマット
+     *
+     * @param declaringClass 宣言クラス
+     * @param constructor コンストラクタメソッドノード
+     * @return フォーマットされたシグネチャ
+     */
+    private String formatConstructorSignature(ClassNode declaringClass, MethodNode constructor) {
+      var sb = new StringBuilder();
+      sb.append(declaringClass.getNameWithoutPackage());
+      sb.append("(");
+
+      Parameter[] params = constructor.getParameters();
+      if (params != null) {
+        for (int i = 0; i < params.length; i++) {
+          if (i > 0) {
+            sb.append(", ");
+          }
+          sb.append(formatTypeName(params[i].getType()));
+          sb.append(" ");
+          sb.append(params[i].getName());
+        }
+      }
+
+      sb.append(")");
+      return sb.toString();
+    }
+
+    /**
      * プリミティブ型かどうかを判定
      *
      * @param typeName 型名
@@ -656,6 +1007,36 @@ public class GroovyTypeInfoService implements TypeInfoService {
           || typeName.equals("boolean")
           || typeName.equals("char")
           || typeName.equals("void");
+    }
+
+    /**
+     * 指定位置がコンストラクタ名内にあるかチェック
+     *
+     * @param declaringClass 宣言クラス
+     * @param constructor コンストラクタメソッドノード
+     * @return 位置がコンストラクタ名内にある場合true
+     */
+    private boolean isPositionWithinConstructorName(
+        ClassNode declaringClass, MethodNode constructor) {
+      int line = targetPosition.getLine();
+      int column = targetPosition.getCharacter();
+
+      // デバッグログ
+      logger.debug(
+          "コンストラクタ位置チェック: クラス名={}, コンストラクタ位置={}:{}, ターゲット位置={}:{}",
+          declaringClass.getNameWithoutPackage(),
+          constructor.getLineNumber(),
+          constructor.getColumnNumber(),
+          line,
+          column);
+
+      // コンストラクタはクラス名と同じ名前を持つ
+      String className = declaringClass.getNameWithoutPackage();
+
+      // コンストラクタの位置はコンストラクタ名の開始位置を指す
+      return line == constructor.getLineNumber()
+          && column >= constructor.getColumnNumber()
+          && column < constructor.getColumnNumber() + className.length();
     }
   }
 }

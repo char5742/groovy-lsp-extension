@@ -66,10 +66,30 @@ public class HoverUseCase {
                 hover.setContents(content);
                 return Either.right(hover);
               } else {
-                // 型情報が見つからない場合はデフォルトのテキストを返す
+                // エラーメッセージから適切なフィードバックを作成
+                String message = typeInfoResult.getLeft();
+
+                // エラーに応じた適切なメッセージを設定
+                String hoverText;
+                if (message.contains("識別子が見つかりません") || message.contains("識別子が特定できません")) {
+                  // 識別子がない場合はホバーを表示しない
+                  return Either.right(null);
+                } else if (message.contains("パースエラー")) {
+                  hoverText = "構文エラーのため型情報を取得できません";
+                } else if (message.contains("定義が見つかりません")) {
+                  // 定義が見つからない場合も、より具体的なメッセージ
+                  hoverText = "定義が見つかりません";
+                } else if (message.contains("型情報が見つかりません")) {
+                  // 型情報が見つからない場合は Groovy element を表示
+                  hoverText = "Groovy element";
+                } else {
+                  // その他のエラーの場合
+                  hoverText = "型情報を取得できません";
+                }
+
                 var content = new MarkupContent();
                 content.setKind(MarkupKind.PLAINTEXT);
-                content.setValue("Groovy element");
+                content.setValue(hoverText);
 
                 var hover = new Hover();
                 hover.setContents(content);
