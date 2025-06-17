@@ -1,8 +1,13 @@
 package com.groovylsp.infrastructure.ast;
 
+import com.groovylsp.domain.model.ScopeManager;
+import com.groovylsp.domain.model.SymbolDefinition;
+import com.groovylsp.domain.model.SymbolTable;
 import com.groovylsp.domain.service.TypeInfoService;
+import com.groovylsp.infrastructure.parser.DocumentContentService;
 import com.groovylsp.infrastructure.parser.GroovyAstParser;
 import io.vavr.control.Either;
+import io.vavr.control.Option;
 import java.util.ArrayList;
 import java.util.List;
 import javax.inject.Inject;
@@ -38,10 +43,20 @@ public class GroovyTypeInfoService implements TypeInfoService {
   private static final Logger logger = LoggerFactory.getLogger(GroovyTypeInfoService.class);
 
   private final GroovyAstParser parser;
+  private final SymbolTable symbolTable;
+  private final ScopeManager scopeManager;
+  private final DocumentContentService documentContentService;
 
   @Inject
-  public GroovyTypeInfoService(GroovyAstParser parser) {
+  public GroovyTypeInfoService(
+      GroovyAstParser parser,
+      SymbolTable symbolTable,
+      ScopeManager scopeManager,
+      DocumentContentService documentContentService) {
     this.parser = parser;
+    this.symbolTable = symbolTable;
+    this.scopeManager = scopeManager;
+    this.documentContentService = documentContentService;
   }
 
   @Override
@@ -62,7 +77,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
               }
 
               // 指定位置の要素を探索
-              var visitor = new TypeInfoVisitor(position);
+              var visitor = new TypeInfoVisitor(position, uri);
               for (ClassNode classNode : parseResult.getClasses()) {
                 visitor.visitClass(classNode);
               }
@@ -72,7 +87,8 @@ public class GroovyTypeInfoService implements TypeInfoService {
                 return Either.right(typeInfo);
               }
 
-              return Either.left("指定位置に型情報が見つかりません");
+              // ASTで見つからない場合は、シンボルテーブルから検索
+              return findTypeInfoFromSymbolTable(uri, position);
             });
   }
 
@@ -90,15 +106,164 @@ public class GroovyTypeInfoService implements TypeInfoService {
     return lastSlash >= 0 ? uri.substring(lastSlash + 1) : uri;
   }
 
+  /**
+   * シンボルテーブルから型情報を検索
+   *
+   * @param uri ファイルのURI
+   * @param position 位置情報
+   * @return 型情報、またはエラー
+   */
+  private Either<String, TypeInfo> findTypeInfoFromSymbolTable(String uri, Position position) {
+    // カーソル位置の単語を取得
+    Either<String, String> wordResult = getWordAtPosition(uri, position);
+    if (wordResult.isLeft()) {
+      return Either.left("識別子が特定できません");
+    }
+
+    String word = wordResult.get();
+    if (word.isEmpty()) {
+      return Either.left("識別子が見つかりません");
+    }
+
+    // スコープマネージャーから検索
+    Option<SymbolDefinition> symbolOption = scopeManager.findSymbolAt(uri, position, word);
+    if (symbolOption.isDefined()) {
+      SymbolDefinition symbol = symbolOption.get();
+      return Either.right(createTypeInfoFromSymbol(symbol));
+    }
+
+    // シンボルテーブルから検索
+    io.vavr.collection.List<SymbolDefinition> definitions = symbolTable.findByName(word);
+    if (!definitions.isEmpty()) {
+      // 同じファイルの定義を優先
+      Option<SymbolDefinition> sameFileSymbol = definitions.find(def -> def.uri().equals(uri));
+      SymbolDefinition symbol = sameFileSymbol.getOrElse(definitions.head());
+      return Either.right(createTypeInfoFromSymbol(symbol));
+    }
+
+    return Either.left("識別子 '" + word + "' の定義が見つかりません");
+  }
+
+  /**
+   * カーソル位置の単語を取得
+   *
+   * @param uri ファイルのURI
+   * @param position 位置情報
+   * @return 単語、またはエラー
+   */
+  private Either<String, String> getWordAtPosition(String uri, Position position) {
+    return documentContentService
+        .getContent(uri)
+        .toEither("ドキュメントが見つかりません: " + uri)
+        .map(
+            content -> {
+              String[] lines = content.split("\n");
+              if (position.getLine() >= lines.length) {
+                return "";
+              }
+
+              String line = lines[position.getLine()];
+              int pos = position.getCharacter();
+
+              // 単語の開始位置を見つける
+              int start = pos;
+              while (start > 0 && isWordChar(line.charAt(start - 1))) {
+                start--;
+              }
+
+              // 単語の終了位置を見つける
+              int end = pos;
+              while (end < line.length() && isWordChar(line.charAt(end))) {
+                end++;
+              }
+
+              return line.substring(start, end);
+            });
+  }
+
+  /** 文字が単語の一部かどうかを判定 */
+  private boolean isWordChar(char c) {
+    return Character.isLetterOrDigit(c) || c == '_' || c == '$';
+  }
+
+  /**
+   * シンボル定義から型情報を作成
+   *
+   * @param symbol シンボル定義
+   * @return 型情報
+   */
+  private TypeInfo createTypeInfoFromSymbol(SymbolDefinition symbol) {
+    TypeInfo.Kind kind =
+        switch (symbol.definitionType()) {
+          case CLASS -> TypeInfo.Kind.CLASS;
+          case METHOD -> TypeInfo.Kind.METHOD;
+          case FIELD -> TypeInfo.Kind.FIELD;
+          case LOCAL_VARIABLE -> TypeInfo.Kind.LOCAL_VARIABLE;
+          case PARAMETER -> TypeInfo.Kind.PARAMETER;
+          case IMPORT -> TypeInfo.Kind.LOCAL_VARIABLE; // IMPORTは適切な種類がないのでLOCAL_VARIABLEで代用
+        };
+
+    // 詳細な情報を含むドキュメントを生成
+    String documentation = createDocumentation(symbol);
+
+    return new TypeInfo(
+        symbol.name(),
+        symbol.qualifiedName(),
+        kind,
+        documentation,
+        null // modifiersはシンボル定義に含まれていないため、今はnull
+        );
+  }
+
+  /**
+   * シンボル定義からドキュメントを生成
+   *
+   * @param symbol シンボル定義
+   * @return ドキュメント文字列
+   */
+  private String createDocumentation(SymbolDefinition symbol) {
+    var sb = new StringBuilder();
+
+    // 定義の種類を表示
+    sb.append("**種類**: ");
+    switch (symbol.definitionType()) {
+      case CLASS -> sb.append("クラス");
+      case METHOD -> sb.append("メソッド");
+      case FIELD -> sb.append("フィールド");
+      case LOCAL_VARIABLE -> sb.append("ローカル変数");
+      case PARAMETER -> sb.append("パラメータ");
+      case IMPORT -> sb.append("インポート");
+    }
+    sb.append("\n\n");
+
+    // 定義位置を表示
+    sb.append("**定義位置**: ");
+    sb.append(extractFileName(symbol.uri()));
+    sb.append(":");
+    sb.append(symbol.range().getStart().getLine() + 1); // 1ベースで表示
+    sb.append("\n\n");
+
+    // 所属クラスがある場合は表示
+    if (symbol.containingClass() != null) {
+      sb.append("**所属クラス**: ");
+      sb.append(symbol.containingClass());
+      sb.append("\n\n");
+    }
+
+    return sb.toString();
+  }
+
   /** AST訪問者クラス（型情報を探索） */
-  private static class TypeInfoVisitor extends ClassCodeVisitorSupport {
+  private class TypeInfoVisitor extends ClassCodeVisitorSupport {
     private final Position targetPosition;
+    private final String uri;
     private @Nullable TypeInfo foundTypeInfo;
 
-    public TypeInfoVisitor(Position targetPosition) {
+    public TypeInfoVisitor(Position targetPosition, String uri) {
       // LSPの位置は0ベース、Groovyは1ベースなので+1で変換
       this.targetPosition =
           new Position(targetPosition.getLine() + 1, targetPosition.getCharacter() + 1);
+      this.uri = uri;
     }
 
     public @Nullable TypeInfo getFoundTypeInfo() {
@@ -336,12 +501,25 @@ public class GroovyTypeInfoService implements TypeInfoService {
 
       // 変数参照の処理
       if (isPositionWithin(expression)) {
+        // まずシンボルテーブルから詳細情報を取得
+        String varName = expression.getName();
+        Option<SymbolDefinition> symbolOption =
+            scopeManager.findSymbolAt(
+                uri,
+                new Position(targetPosition.getLine() - 1, targetPosition.getCharacter() - 1),
+                varName);
+
+        String documentation = null;
+        if (symbolOption.isDefined()) {
+          documentation = createDocumentation(symbolOption.get());
+        }
+
         foundTypeInfo =
             new TypeInfo(
                 expression.getName(),
                 formatTypeName(expression.getType()),
                 TypeInfo.Kind.LOCAL_VARIABLE,
-                null,
+                documentation,
                 null);
       }
     }

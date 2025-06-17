@@ -85,7 +85,147 @@ println message`;
 
     ok(hovers && hovers.length > 0, '変数上でもホバー情報が表示されるべきです');
   });
+
+  it('変数参照時に定義情報が表示される', async () => {
+    const code = `class Person {
+  private String name = "John"
+  
+  def getName() {
+    return name
+  }
+}`;
+
+    doc = await openDoc(code, 'groovy');
+    await window.showTextDocument(doc);
+
+    // LSPサーバーがドキュメントを完全に処理するまで待つ
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // getNameメソッド内のname変数の位置
+    const position = new Position(4, 11); // nameの位置
+
+    const hovers = (await commands.executeCommand('vscode.executeHoverProvider', doc.uri, position)) as Hover[];
+
+    ok(hovers && hovers.length > 0, '変数参照上でホバー情報が表示されるべきです');
+
+    const hover = hovers[0];
+    const content = getHoverContent(hover);
+
+    // 型情報または定義情報が含まれているかチェック
+    ok(
+      content.includes('String') || content.includes('フィールド') || content.includes('```groovy'),
+      `変数の型情報または定義情報が表示されるべきです: ${content}`,
+    );
+  });
+
+  it('メソッド上でシグネチャが表示される', async () => {
+    const code = `class Calculator {
+  int add(int a, int b) {
+    return a + b
+  }
+  
+  def calculate() {
+    return add(5, 3)
+  }
+}`;
+
+    doc = await openDoc(code, 'groovy');
+    await window.showTextDocument(doc);
+
+    // LSPサーバーがドキュメントを完全に処理するまで待つ
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // addメソッド定義の位置
+    const position = new Position(1, 8); // addメソッドの位置
+
+    const hovers = (await commands.executeCommand('vscode.executeHoverProvider', doc.uri, position)) as Hover[];
+
+    ok(hovers && hovers.length > 0, 'メソッド上でホバー情報が表示されるべきです');
+
+    const hover = hovers[0];
+    const content = getHoverContent(hover);
+
+    // メソッドシグネチャが含まれているかチェック
+    ok(
+      content.includes('add(int a, int b)') || content.includes('add(int, int)'),
+      'メソッドのシグネチャが表示されるべきです',
+    );
+  });
+
+  it('クラス名上でクラス情報が表示される', async () => {
+    const code = `class Person {
+  String name
+  int age
+}`;
+
+    doc = await openDoc(code, 'groovy');
+    await window.showTextDocument(doc);
+
+    // LSPサーバーがドキュメントを完全に処理するまで待つ
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Personクラス名の位置
+    const position = new Position(0, 8); // Personの位置
+
+    const hovers = (await commands.executeCommand('vscode.executeHoverProvider', doc.uri, position)) as Hover[];
+
+    ok(hovers && hovers.length > 0, 'クラス名上でホバー情報が表示されるべきです');
+
+    const hover = hovers[0];
+    const content = getHoverContent(hover);
+
+    // クラス情報が含まれているかチェック
+    ok(content.includes('class Person') || content.includes('クラス'), 'クラス情報が表示されるべきです');
+  });
+
+  it('フォールバックメッセージが改善されている', async () => {
+    const code = `// コメント
+123`;
+
+    doc = await openDoc(code, 'groovy');
+    await window.showTextDocument(doc);
+
+    // LSPサーバーがドキュメントを完全に処理するまで待つ
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // 数値リテラルの位置
+    const position = new Position(1, 1); // 123の位置
+
+    const hovers = (await commands.executeCommand('vscode.executeHoverProvider', doc.uri, position)) as Hover[];
+
+    if (hovers && hovers.length > 0) {
+      const hover = hovers[0];
+      const content = getHoverContent(hover);
+
+      // 「Groovy element」よりも詳細な情報が表示されるか、またはホバーが表示されない
+      ok(
+        !content.includes('Groovy element') || content.includes('識別子'),
+        'フォールバックメッセージが改善されているべきです',
+      );
+    }
+  });
 });
+
+// ホバーコンテンツを取得するヘルパー関数
+function getHoverContent(hover: Hover): string {
+  if (hover.contents && typeof hover.contents === 'object' && 'value' in hover.contents) {
+    return (hover.contents as { value: string }).value;
+  }
+  if (Array.isArray(hover.contents)) {
+    // 配列の各要素をチェック
+    for (const content of hover.contents) {
+      if (content && typeof content === 'object' && 'value' in content) {
+        return (content as { value: string }).value;
+      }
+      if (typeof content === 'string') {
+        return content;
+      }
+    }
+  } else if (typeof hover.contents === 'string') {
+    return hover.contents as string;
+  }
+  return '';
+}
 
 // ホバーコンテンツをチェックするヘルパー関数
 function checkHoverContents(hover: Hover): boolean {

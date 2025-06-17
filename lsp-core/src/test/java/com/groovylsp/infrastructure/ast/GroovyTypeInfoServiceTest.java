@@ -4,8 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.groovylsp.domain.model.ScopeManager;
+import com.groovylsp.domain.model.SymbolTable;
+import com.groovylsp.domain.repository.TextDocumentRepository;
 import com.groovylsp.domain.service.TypeInfoService;
+import com.groovylsp.infrastructure.parser.DocumentContentService;
 import com.groovylsp.infrastructure.parser.GroovyAstParser;
+import com.groovylsp.infrastructure.repository.InMemoryTextDocumentRepository;
 import com.groovylsp.testing.FastTest;
 import io.vavr.control.Either;
 import org.eclipse.lsp4j.Position;
@@ -17,11 +22,18 @@ import org.junit.jupiter.api.Test;
 class GroovyTypeInfoServiceTest {
 
   private GroovyTypeInfoService service;
+  private SymbolTable symbolTable;
+  private ScopeManager scopeManager;
+  private DocumentContentService documentContentService;
 
   @BeforeEach
   void setUp() {
     var parser = new GroovyAstParser();
-    service = new GroovyTypeInfoService(parser);
+    symbolTable = new SymbolTable();
+    scopeManager = new ScopeManager();
+    TextDocumentRepository repository = new InMemoryTextDocumentRepository();
+    documentContentService = new DocumentContentService(repository);
+    service = new GroovyTypeInfoService(parser, symbolTable, scopeManager, documentContentService);
   }
 
   @Test
@@ -235,7 +247,7 @@ class GroovyTypeInfoServiceTest {
 
     // then
     assertTrue(result.isLeft());
-    assertTrue(result.getLeft().contains("型情報が見つかりません"));
+    assertTrue(result.getLeft().contains("識別子") || result.getLeft().contains("型情報"));
   }
 
   @Test
