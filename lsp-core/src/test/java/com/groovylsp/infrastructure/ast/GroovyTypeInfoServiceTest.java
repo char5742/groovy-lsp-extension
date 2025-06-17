@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.groovylsp.domain.model.ScopeManager;
 import com.groovylsp.domain.model.SymbolTable;
 import com.groovylsp.domain.repository.TextDocumentRepository;
+import com.groovylsp.domain.service.AstAnalysisService;
 import com.groovylsp.domain.service.TypeInfoService;
 import com.groovylsp.infrastructure.parser.DocumentContentService;
 import com.groovylsp.infrastructure.parser.GroovyAstParser;
@@ -33,7 +34,10 @@ class GroovyTypeInfoServiceTest {
     scopeManager = new ScopeManager();
     TextDocumentRepository repository = new InMemoryTextDocumentRepository();
     documentContentService = new DocumentContentService(repository);
-    service = new GroovyTypeInfoService(parser, symbolTable, scopeManager, documentContentService);
+    var astAnalysisService = new AstAnalysisService(parser);
+    service =
+        new GroovyTypeInfoService(
+            parser, symbolTable, scopeManager, documentContentService, astAnalysisService);
   }
 
   @Test

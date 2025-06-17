@@ -34,9 +34,10 @@ class GroovyFieldTypeDebugTest {
     var scopeManager = new ScopeManager();
     TextDocumentRepository repository = new InMemoryTextDocumentRepository();
     var documentContentService = new DocumentContentService(repository);
-    typeInfoService =
-        new GroovyTypeInfoService(parser, symbolTable, scopeManager, documentContentService);
     astAnalysisService = new AstAnalysisService(parser);
+    typeInfoService =
+        new GroovyTypeInfoService(
+            parser, symbolTable, scopeManager, documentContentService, astAnalysisService);
     symbolTableBuilderService = new GroovySymbolTableBuilderService();
   }
 

@@ -73,8 +73,10 @@ public class ServerModule {
       GroovyAstParser parser,
       SymbolTable symbolTable,
       ScopeManager scopeManager,
-      DocumentContentService documentContentService) {
-    return new GroovyTypeInfoService(parser, symbolTable, scopeManager, documentContentService);
+      DocumentContentService documentContentService,
+      AstAnalysisService astAnalysisService) {
+    return new GroovyTypeInfoService(
+        parser, symbolTable, scopeManager, documentContentService, astAnalysisService);
   }
 
   @Provides
