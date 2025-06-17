@@ -111,10 +111,10 @@ println message`;
     const hover = hovers[0];
     const content = getHoverContent(hover);
 
-    // 型情報または定義情報が含まれているかチェック
+    // 型情報が正しく表示されているかチェック（String name であるべき）
     ok(
-      content.includes('String') || content.includes('フィールド') || content.includes('```groovy'),
-      `変数の型情報または定義情報が表示されるべきです: ${content}`,
+      content.includes('String name'),
+      `変数の型情報が 'String name' として表示されるべきです。実際の内容: ${content}`,
     );
   });
 
