@@ -47,8 +47,7 @@ npm install                  # 依存関係インストール
 npm run compile              # TypeScriptビルド
 npm run watch                # 変更を監視して再コンパイル
 npm run test                 # テスト実行（e2eテスト）
-npm run test -- --grep "test name"  # 単一テスト実行
-npm run test:grep            # GREP環境変数で特定のテストを実行（例: GREP="括弧" npm run test:grep）
+npm run test:grep            # 特定(単体)のテストを実行（例: GREP="括弧" npm run test:grep）
 npm run coverage             # カバレッジレポート生成
 npm run lint                 # Biomeチェック実行
 npm run lint:fix             # Biome自動修正

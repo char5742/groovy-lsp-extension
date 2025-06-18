@@ -35,6 +35,8 @@ import org.codehaus.groovy.ast.expr.ConstantExpression;
 import org.codehaus.groovy.ast.expr.ConstructorCallExpression;
 import org.codehaus.groovy.ast.expr.DeclarationExpression;
 import org.codehaus.groovy.ast.expr.Expression;
+import org.codehaus.groovy.ast.expr.ListExpression;
+import org.codehaus.groovy.ast.expr.MapExpression;
 import org.codehaus.groovy.ast.expr.MethodCallExpression;
 import org.codehaus.groovy.ast.expr.PropertyExpression;
 import org.codehaus.groovy.ast.expr.VariableExpression;
@@ -322,12 +324,11 @@ public class GroovyTypeInfoService implements TypeInfoService {
       // クラスのすべてのフィールドの型情報を事前に記録
       // （メソッド内からフィールドを参照する際に必要）
       for (FieldNode field : node.getFields()) {
-        variableTypes.put(field.getName(), field.getType());
+        // defで宣言されたフィールドの型推論を適用
+        ClassNode fieldType = inferFieldType(field);
+        variableTypes.put(field.getName(), fieldType);
         logger.debug(
-            "クラス {} のフィールドを事前記録: {} (型: {})",
-            node.getName(),
-            field.getName(),
-            field.getType().getName());
+            "クラス {} のフィールドを事前記録: {} (型: {})", node.getName(), field.getName(), fieldType.getName());
       }
 
       // まず子要素（フィールドとメソッド）をチェック
@@ -408,14 +409,43 @@ public class GroovyTypeInfoService implements TypeInfoService {
       }
 
       if (isPositionWithin(node)) {
+        // フィールドの型を推論（defで宣言された場合の初期化式を考慮）
+        ClassNode fieldType = inferFieldType(node);
+
         foundTypeInfo =
             new TypeInfo(
                 node.getName(),
-                formatTypeName(node.getType()),
+                formatTypeName(fieldType),
                 TypeInfo.Kind.FIELD,
                 null,
                 getModifiersString(node.getModifiers()));
       }
+    }
+
+    /**
+     * フィールドの型を推論
+     *
+     * @param field フィールドノード
+     * @return 推論された型（推論できない場合は宣言された型）
+     */
+    private ClassNode inferFieldType(FieldNode field) {
+      // 明示的に型が宣言されている場合（defやObjectでない場合）はその型を使用
+      ClassNode declaredType = field.getType();
+      if (!field.isDynamicTyped() && !"java.lang.Object".equals(declaredType.getName())) {
+        return declaredType;
+      }
+
+      // 初期化式から型を推論
+      if (field.hasInitialExpression()) {
+        Expression init = field.getInitialExpression();
+        ClassNode inferredType = inferTypeFromExpression(init);
+        if (inferredType != null && !"java.lang.Object".equals(inferredType.getName())) {
+          return inferredType;
+        }
+      }
+
+      // 推論できない場合は宣言された型を返す
+      return declaredType;
     }
 
     @Override
@@ -1180,7 +1210,19 @@ public class GroovyTypeInfoService implements TypeInfoService {
           return ClassHelper.long_TYPE;
         } else if (value instanceof Boolean) {
           return ClassHelper.boolean_TYPE;
+        } else if (value instanceof Double) {
+          return ClassHelper.double_TYPE;
+        } else if (value instanceof Float) {
+          return ClassHelper.float_TYPE;
+        } else if (value instanceof java.math.BigDecimal) {
+          return ClassHelper.make(java.math.BigDecimal.class);
         }
+      } else if (expression instanceof ListExpression) {
+        // リストリテラル [] はArrayListとして推論
+        return ClassHelper.make(java.util.ArrayList.class);
+      } else if (expression instanceof MapExpression) {
+        // マップリテラル [:] はLinkedHashMapとして推論
+        return ClassHelper.make(java.util.LinkedHashMap.class);
       }
 
       // SpockのMock/Stubの処理
@@ -1198,6 +1240,12 @@ public class GroovyTypeInfoService implements TypeInfoService {
               if (firstArg instanceof ClassExpression) {
                 var classExpr = (ClassExpression) firstArg;
                 return classExpr.getType();
+              } else if (firstArg instanceof VariableExpression) {
+                // Mock(UserService)のように、引数が変数として扱われる場合
+                var varExpr = (VariableExpression) firstArg;
+                String typeName = varExpr.getName();
+                // 型名から直接ClassNodeを作成
+                return ClassHelper.make(typeName);
               }
             }
           }

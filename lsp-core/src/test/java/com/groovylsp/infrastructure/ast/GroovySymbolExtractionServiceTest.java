@@ -329,4 +329,224 @@ class GroovySymbolExtractionServiceTest {
       assertThat(symbols).isEmpty();
     }
   }
+
+  @Nested
+  @DisplayName("フィールドの型推論")
+  class FieldTypeInference {
+
+    @Test
+    @DisplayName("defで宣言されたフィールドの型が初期化式から推論される")
+    void inferTypeFromInitialExpression() {
+      // given
+      String sourceCode =
+          """
+          class Person {
+              def name = "John"
+              def age = 25
+              def height = 180.5
+              def isActive = true
+              def scores = [90, 85, 92]
+              def nullValue = null
+          }
+          """;
+
+      // when
+      Either<String, List<Symbol>> result =
+          service.extractSymbols("file:///test/Person.groovy", sourceCode);
+
+      // then
+      assertThat(result.isRight()).isTrue();
+      List<Symbol> symbols = result.get();
+      assertThat(symbols).hasSize(1);
+
+      Symbol classSymbol = symbols.get(0);
+      assertThat(classSymbol.name()).isEqualTo("Person");
+
+      // 各フィールドの型が正しく推論されているか確認
+      assertThat(classSymbol.children())
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("name");
+                assertThat(field.kind()).isEqualTo(SymbolKind.Property);
+                assertThat(field.detail()).isEqualTo(": String");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("age");
+                assertThat(field.kind()).isEqualTo(SymbolKind.Property);
+                assertThat(field.detail()).isEqualTo(": int");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("height");
+                assertThat(field.kind()).isEqualTo(SymbolKind.Property);
+                // 180.5のような小数リテラルはGroovyではBigDecimalとして扱われる
+                assertThat(field.detail()).isIn(": double", ": float", ": BigDecimal");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("isActive");
+                assertThat(field.kind()).isEqualTo(SymbolKind.Property);
+                assertThat(field.detail()).isEqualTo(": boolean");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("scores");
+                assertThat(field.kind()).isEqualTo(SymbolKind.Property);
+                // リストリテラルはArrayList型として推論される
+                assertThat(field.detail()).isEqualTo(": ArrayList");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("nullValue");
+                assertThat(field.kind()).isEqualTo(SymbolKind.Property);
+                // nullの場合はObject型になる
+                assertThat(field.detail()).isEqualTo(": Object");
+              });
+    }
+
+    @Test
+    @DisplayName("コンストラクタ呼び出しから型が推論される")
+    void inferTypeFromConstructorCall() {
+      // given
+      String sourceCode =
+          """
+          class Service {
+              def user = new User()
+              def list = new ArrayList<String>()
+              def map = new HashMap<String, Integer>()
+          }
+
+          class User {
+              String name
+          }
+          """;
+
+      // when
+      Either<String, List<Symbol>> result =
+          service.extractSymbols("file:///test/Service.groovy", sourceCode);
+
+      // then
+      assertThat(result.isRight()).isTrue();
+      List<Symbol> symbols = result.get();
+
+      // Serviceクラスのシンボルを検証
+      Symbol serviceClass =
+          symbols.stream().filter(s -> s.name().equals("Service")).findFirst().orElseThrow();
+
+      assertThat(serviceClass.children())
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("user");
+                assertThat(field.detail()).isEqualTo(": User");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("list");
+                assertThat(field.detail()).isEqualTo(": ArrayList");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("map");
+                assertThat(field.detail()).isEqualTo(": HashMap");
+              });
+    }
+
+    @Test
+    @DisplayName("Spockのモック生成メソッドから型が推論される")
+    void inferTypeFromSpockMocks() {
+      // given
+      String sourceCode =
+          """
+          import spock.lang.Specification
+
+          class ServiceSpec extends Specification {
+              def userService = Mock(UserService)
+              def repository = Stub(UserRepository)
+              def cache = Spy(CacheService)
+          }
+
+          interface UserService {}
+          interface UserRepository {}
+          class CacheService {}
+          """;
+
+      // when
+      Either<String, List<Symbol>> result =
+          service.extractSymbols("file:///test/ServiceSpec.groovy", sourceCode);
+
+      // then
+      assertThat(result.isRight()).isTrue();
+      List<Symbol> symbols = result.get();
+
+      // ServiceSpecクラスのシンボルを検証
+      Symbol specClass =
+          symbols.stream().filter(s -> s.name().equals("ServiceSpec")).findFirst().orElseThrow();
+
+      assertThat(specClass.children())
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("userService");
+                assertThat(field.detail()).isEqualTo(": UserService");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("repository");
+                assertThat(field.detail()).isEqualTo(": UserRepository");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("cache");
+                assertThat(field.detail()).isEqualTo(": CacheService");
+              });
+    }
+
+    @Test
+    @DisplayName("明示的に型が宣言されたフィールドはその型を維持する")
+    void keepExplicitlyDeclaredTypes() {
+      // given
+      String sourceCode =
+          """
+          class TypedFields {
+              String explicitString = "value"
+              int explicitInt = 42
+              List<String> explicitList = ["a", "b"]
+              Object explicitObject = "still object"
+          }
+          """;
+
+      // when
+      Either<String, List<Symbol>> result =
+          service.extractSymbols("file:///test/TypedFields.groovy", sourceCode);
+
+      // then
+      assertThat(result.isRight()).isTrue();
+      List<Symbol> symbols = result.get();
+      assertThat(symbols).hasSize(1);
+
+      Symbol classSymbol = symbols.get(0);
+      assertThat(classSymbol.children())
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("explicitString");
+                assertThat(field.detail()).isEqualTo(": String");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("explicitInt");
+                assertThat(field.detail()).isEqualTo(": int");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("explicitList");
+                assertThat(field.detail()).isEqualTo(": List");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("explicitObject");
+                // 明示的にObjectと宣言されている場合はObjectのまま
+                assertThat(field.detail()).isEqualTo(": Object");
+              });
+    }
+  }
 }
