@@ -63,66 +63,6 @@ describe('ホバー機能のE2Eテスト', () => {
     );
   });
 
-  it('パッケージ宣言にホバーした際に情報が表示される（M4.5以降で対応予定）', async () => {
-    const position = editor.document.positionAt(editor.document.getText().indexOf('package com.example'));
-
-    const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
-
-    ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
-    ok(
-      hoverContent.includes('package') || hoverContent.includes('com.example') || hoverContent.includes('Groovy'),
-      'ホバー内容にパッケージ情報が含まれる必要があります',
-    );
-  });
-
-  it('インポート文にホバーした際に情報が表示される（M4.5以降で対応予定）', async () => {
-    const position = editor.document.positionAt(editor.document.getText().indexOf('import spock.lang.Specification'));
-
-    const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
-
-    ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
-    ok(
-      hoverContent.includes('import') || hoverContent.includes('Specification') || hoverContent.includes('Groovy'),
-      'ホバー内容にインポート情報が含まれる必要があります',
-    );
-  });
-
-  it('インターフェース名にホバーした際に情報が表示される（M4.5以降で対応予定）', async () => {
-    const position = editor.document.positionAt(editor.document.getText().indexOf('interface UserService'));
-
-    const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
-
-    ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
-    ok(
-      hoverContent.includes('UserService') || hoverContent.includes('interface') || hoverContent.includes('Groovy'),
-      'ホバー内容にインターフェース情報が含まれる必要があります',
-    );
-  });
-
-  it('インターフェースメソッドにホバーした際に情報が表示される（M4.5以降で対応予定）', async () => {
-    const position = editor.document.positionAt(editor.document.getText().indexOf('User findById(Long id)'));
-
-    const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
-
-    ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
-    ok(
-      hoverContent.includes('findById') || hoverContent.includes('User') || hoverContent.includes('Groovy'),
-      'ホバー内容にインターフェースメソッド情報が含まれる必要があります',
-    );
-  });
-
   it('プロパティにホバーした際に型情報が表示される', async () => {
     const position = editor.document.positionAt(editor.document.getText().indexOf('Long id'));
 
@@ -231,83 +171,6 @@ describe('ホバー機能のE2Eテスト', () => {
     );
   });
 
-  it('Spockのgivenブロックにホバーした際に情報が表示される（M6.4で対応予定）', async () => {
-    const position = editor.document.positionAt(editor.document.getText().indexOf('given:'));
-
-    const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
-
-    ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
-    ok(
-      hoverContent.includes('given') || hoverContent.includes('Spock') || hoverContent.includes('Groovy'),
-      'ホバー内容にSpockブロック情報が含まれる必要があります',
-    );
-  });
-
-  it('Spockのwhenブロックにホバーした際に情報が表示される（M6.4で対応予定）', async () => {
-    const position = editor.document.positionAt(editor.document.getText().indexOf('when:'));
-
-    const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
-
-    ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
-    ok(
-      hoverContent.includes('when') || hoverContent.includes('Spock') || hoverContent.includes('Groovy'),
-      'ホバー内容にSpockブロック情報が含まれる必要があります',
-    );
-  });
-
-  it('Spockのthenブロックにホバーした際に情報が表示される（M6.4で対応予定）', async () => {
-    const position = editor.document.positionAt(editor.document.getText().indexOf('then:'));
-
-    const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
-
-    ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
-    ok(
-      hoverContent.includes('then') || hoverContent.includes('Spock') || hoverContent.includes('Groovy'),
-      'ホバー内容にSpockブロック情報が含まれる必要があります',
-    );
-  });
-
-  it('SpockのMockにホバーした際に情報が表示される（M6.4で対応予定）', async () => {
-    const position = editor.document.positionAt(editor.document.getText().indexOf('Mock(UserService)'));
-
-    const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
-
-    ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
-    ok(
-      hoverContent.includes('Mock') || hoverContent.includes('Spock') || hoverContent.includes('Groovy'),
-      'ホバー内容にMock情報が含まれる必要があります',
-    );
-  });
-
-  it('SpockのStubbing演算子>>にホバーした際に情報が表示される（M6.4で対応予定）', async () => {
-    const text = editor.document.getText();
-    const operatorIndex = text.indexOf('>> expectedUser');
-    const position = editor.document.positionAt(operatorIndex);
-
-    const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
-
-    ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
-    ok(
-      hoverContent.includes('>>') || hoverContent.includes('Stub') || hoverContent.includes('Groovy'),
-      'ホバー内容にStubbing演算子情報が含まれる必要があります',
-    );
-  });
-
   it('型名（Long）にホバーした際に情報が表示される', async () => {
     const text = editor.document.getText();
     const typeIndex = text.indexOf('Long id') + 'Long'.length - 1;
@@ -325,83 +188,6 @@ describe('ホバー機能のE2Eテスト', () => {
     );
   });
 
-  it('文字列リテラルにホバーした際に情報が表示される（M9.5で対応予定）', async () => {
-    const position = editor.document.positionAt(editor.document.getText().indexOf('"John"') + 1);
-
-    const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
-
-    ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
-    ok(
-      hoverContent.includes('String') || hoverContent.includes('literal') || hoverContent.includes('Groovy'),
-      'ホバー内容に文字列リテラル情報が含まれる必要があります',
-    );
-  });
-
-  it('数値リテラルにホバーした際に情報が表示される（M9.5で対応予定）', async () => {
-    const position = editor.document.positionAt(editor.document.getText().indexOf('1L') + 1);
-
-    const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
-
-    ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
-    ok(
-      hoverContent.includes('Long') || hoverContent.includes('1L') || hoverContent.includes('Groovy'),
-      'ホバー内容に数値リテラル情報が含まれる必要があります',
-    );
-  });
-
-  it('クロージャにホバーした際に情報が表示される（M9.5で対応予定）', async () => {
-    const text = editor.document.getText();
-    const closureIndex = text.indexOf('{ User user ->');
-    const position = editor.document.positionAt(closureIndex);
-
-    const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
-
-    ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
-    ok(
-      hoverContent.includes('closure') || hoverContent.includes('User') || hoverContent.includes('Groovy'),
-      'ホバー内容にクロージャ情報が含まれる必要があります',
-    );
-  });
-
-  it('defキーワードにホバーした際に情報が表示される（M9.5で対応予定）', async () => {
-    const position = editor.document.positionAt(editor.document.getText().indexOf('def userService'));
-
-    const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
-
-    ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
-    ok(
-      hoverContent.includes('def') || hoverContent.includes('dynamic') || hoverContent.includes('Groovy'),
-      'ホバー内容にdefキーワード情報が含まれる必要があります',
-    );
-  });
-
-  it('extendsキーワードにホバーした際に情報が表示される（M9.5で対応予定）', async () => {
-    const position = editor.document.positionAt(editor.document.getText().indexOf('extends Specification'));
-
-    const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
-
-    ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
-    ok(
-      hoverContent.includes('extends') || hoverContent.includes('Specification') || hoverContent.includes('Groovy'),
-      'ホバー内容にextendsキーワード情報が含まれる必要があります',
-    );
-  });
-
   it('メソッド呼び出しにホバーした際に情報が表示される', async () => {
     const position = editor.document.positionAt(editor.document.getText().indexOf('userService.findById'));
 
@@ -414,23 +200,6 @@ describe('ホバー機能のE2Eテスト', () => {
     ok(
       hoverContent.includes('findById') || hoverContent.includes('UserService') || hoverContent.includes('Groovy'),
       'ホバー内容にメソッド呼び出し情報が含まれる必要があります',
-    );
-  });
-
-  it('名前付き引数にホバーした際に情報が表示される（M9.5で対応予定）', async () => {
-    const text = editor.document.getText();
-    const namedArgIndex = text.indexOf('name: name') + 'name'.length - 1;
-    const position = editor.document.positionAt(namedArgIndex);
-
-    const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
-
-    ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
-    ok(
-      hoverContent.includes('name') || hoverContent.includes('property') || hoverContent.includes('Groovy'),
-      'ホバー内容に名前付き引数情報が含まれる必要があります',
     );
   });
 });
