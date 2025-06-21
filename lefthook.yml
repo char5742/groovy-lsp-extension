@@ -90,7 +90,7 @@ pre-push:
     typescript-tests:
       tags: [test, typescript]
       root: "vscode-extension/"
-      run: timeout 240 npm run test || (echo "テストがタイムアウトしました。テストを確認してください。" && exit 1)
+      run: ./scripts/run-tests-with-timeout.sh
       fail_text: |
         TypeScriptテストが失敗しました。すべてのテストが成功してからプッシュしてください。
         'npm run test' を実行して失敗したテストを確認
