@@ -67,9 +67,15 @@ export async function runTestSuite(options: TestRunnerOptions): Promise<void> {
 export function createTestRunner(options: TestRunnerOptions): void {
   runTestSuite(options)
     .then(() => {
-      process.exit(0);
+      // テスト成功後、確実にプロセスを終了
+      setTimeout(() => {
+        process.exit(0);
+      }, 500);
     })
     .catch((_err) => {
-      process.exit(1);
+      // エラー時も確実にプロセスを終了
+      setTimeout(() => {
+        process.exit(1);
+      }, 500);
     });
 }

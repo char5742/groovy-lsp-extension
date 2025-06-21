@@ -1,5 +1,5 @@
 import { strictEqual } from 'node:assert/strict';
-import { DiagnosticSeverity, type TextDocument, extensions, languages } from 'vscode';
+import { DiagnosticSeverity, type TextDocument, commands, extensions, languages } from 'vscode';
 import { closeDoc, openDoc } from '../test-utils/lsp.ts';
 
 // テストで使用する待機時間の定数
@@ -291,5 +291,13 @@ describe('AST解析機能のテスト', () => {
       );
       strictEqual(syntaxErrors.length, 0, 'Groovy特有の構文で構文エラーが発生しないべきです');
     });
+  });
+
+  // テストスイート終了時のクリーンアップ
+  after(async () => {
+    // 開いているドキュメントをすべて閉じる
+    await commands.executeCommand('workbench.action.closeAllEditors');
+    // 少し待つ
+    await new Promise((resolve) => setTimeout(resolve, 500));
   });
 });
