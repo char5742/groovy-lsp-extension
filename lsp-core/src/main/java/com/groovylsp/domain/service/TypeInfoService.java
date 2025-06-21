@@ -35,7 +35,9 @@ public interface TypeInfoService {
       FIELD, // フィールド
       PARAMETER, // パラメータ
       METHOD, // メソッド
-      CLASS // クラス
+      CLASS, // クラス
+      ENUM, // 列挙型
+      ENUM_CONSTANT // 列挙定数
     }
   }
 }

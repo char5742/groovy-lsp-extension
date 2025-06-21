@@ -233,6 +233,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
           case LOCAL_VARIABLE -> TypeInfo.Kind.LOCAL_VARIABLE;
           case PARAMETER -> TypeInfo.Kind.PARAMETER;
           case IMPORT -> TypeInfo.Kind.LOCAL_VARIABLE; // IMPORTは適切な種類がないのでLOCAL_VARIABLEで代用
+          case ENUM_CONSTANT -> TypeInfo.Kind.ENUM_CONSTANT;
         };
 
     // 詳細な情報を含むドキュメントを生成
@@ -265,6 +266,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
       case LOCAL_VARIABLE -> sb.append("ローカル変数");
       case PARAMETER -> sb.append("パラメータ");
       case IMPORT -> sb.append("インポート");
+      case ENUM_CONSTANT -> sb.append("列挙定数");
     }
     sb.append("\n\n");
 
@@ -364,13 +366,24 @@ public class GroovyTypeInfoService implements TypeInfoService {
 
       // 子要素で見つからなかった場合、クラス名の位置をチェック
       if (isPositionWithinClassName(node)) {
-        foundTypeInfo =
-            new TypeInfo(
-                node.getName(),
-                node.getName(),
-                TypeInfo.Kind.CLASS,
-                null,
-                getModifiersString(node.getModifiers()));
+        // enumの場合は特別な処理
+        if (node.isEnum()) {
+          foundTypeInfo =
+              new TypeInfo(
+                  node.getName(),
+                  node.getName(),
+                  TypeInfo.Kind.ENUM,
+                  createEnumDocumentation(node),
+                  getModifiersString(node.getModifiers()));
+        } else {
+          foundTypeInfo =
+              new TypeInfo(
+                  node.getName(),
+                  node.getName(),
+                  TypeInfo.Kind.CLASS,
+                  null,
+                  getModifiersString(node.getModifiers()));
+        }
       }
     }
 
@@ -393,13 +406,13 @@ public class GroovyTypeInfoService implements TypeInfoService {
           line,
           column);
 
-      // クラス名は "class " キーワードの後にある（6文字分オフセット）
+      // クラス名は "class " または "enum " キーワードの後にある
       String className = node.getNameWithoutPackage();
-      int classKeywordLength = 6; // "class " の長さ
+      int keywordLength = node.isEnum() ? 5 : 6; // "enum " = 5, "class " = 6
       // targetPositionは既に1ベースに変換されているので、そのまま比較
       return line == node.getLineNumber()
-          && column >= node.getColumnNumber() + classKeywordLength
-          && column < node.getColumnNumber() + classKeywordLength + className.length();
+          && column >= node.getColumnNumber() + keywordLength
+          && column < node.getColumnNumber() + keywordLength + className.length();
     }
 
     @Override
@@ -409,16 +422,28 @@ public class GroovyTypeInfoService implements TypeInfoService {
       }
 
       if (isPositionWithin(node)) {
-        // フィールドの型を推論（defで宣言された場合の初期化式を考慮）
-        ClassNode fieldType = inferFieldType(node);
+        // enum定数の場合は特別な処理
+        if (node.isEnum()) {
+          ClassNode declaringClass = node.getDeclaringClass();
+          foundTypeInfo =
+              new TypeInfo(
+                  node.getName(),
+                  declaringClass.getNameWithoutPackage(),
+                  TypeInfo.Kind.ENUM_CONSTANT,
+                  null,
+                  null);
+        } else {
+          // フィールドの型を推論（defで宣言された場合の初期化式を考慮）
+          ClassNode fieldType = inferFieldType(node);
 
-        foundTypeInfo =
-            new TypeInfo(
-                node.getName(),
-                formatTypeName(fieldType),
-                TypeInfo.Kind.FIELD,
-                null,
-                getModifiersString(node.getModifiers()));
+          foundTypeInfo =
+              new TypeInfo(
+                  node.getName(),
+                  formatTypeName(fieldType),
+                  TypeInfo.Kind.FIELD,
+                  null,
+                  getModifiersString(node.getModifiers()));
+        }
       }
     }
 
@@ -886,24 +911,45 @@ public class GroovyTypeInfoService implements TypeInfoService {
             var varExpr = (VariableExpression) objectExpression;
             // 変数の型を取得
             objectType = variableTypes.get(varExpr.getName());
+          } else if (objectExpression instanceof ClassExpression) {
+            // Color.RED のようなenum定数アクセスの場合
+            var classExpr = (ClassExpression) objectExpression;
+            objectType = classExpr.getType();
           }
 
           // オブジェクトの型が判明した場合、そのフィールド情報を検索
-          if (objectType != null && astInfo != null) {
-            String className = formatTypeName(objectType);
-            ClassInfo classInfo = astInfo.findClassByName(className);
-            if (classInfo != null) {
-              // フィールドを検索
-              for (var field : classInfo.fields()) {
-                if (field.name().equals(propName)) {
+          if (objectType != null) {
+            // enumの場合は特別な処理
+            if (objectType.isEnum()) {
+              // enum定数を検索
+              for (FieldNode field : objectType.getFields()) {
+                if (field.isEnum() && field.getName().equals(propName)) {
                   foundTypeInfo =
                       new TypeInfo(
                           propName,
-                          field.type(),
-                          TypeInfo.Kind.FIELD,
-                          "フィールド: " + className + "." + propName,
+                          objectType.getNameWithoutPackage(),
+                          TypeInfo.Kind.ENUM_CONSTANT,
+                          null,
                           null);
                   return;
+                }
+              }
+            } else if (astInfo != null) {
+              String className = formatTypeName(objectType);
+              ClassInfo classInfo = astInfo.findClassByName(className);
+              if (classInfo != null) {
+                // フィールドを検索
+                for (var field : classInfo.fields()) {
+                  if (field.name().equals(propName)) {
+                    foundTypeInfo =
+                        new TypeInfo(
+                            propName,
+                            field.type(),
+                            TypeInfo.Kind.FIELD,
+                            "フィールド: " + className + "." + propName,
+                            null);
+                    return;
+                  }
                 }
               }
             }
@@ -1336,6 +1382,33 @@ public class GroovyTypeInfoService implements TypeInfoService {
           // その他のクラスの場合、ClassNodeを生成
           return new ClassNode(typeName, 0, ClassHelper.OBJECT_TYPE);
       }
+    }
+
+    /**
+     * enum型のドキュメントを生成
+     *
+     * @param enumNode enumクラスノード
+     * @return ドキュメント文字列
+     */
+    private String createEnumDocumentation(ClassNode enumNode) {
+      var sb = new StringBuilder();
+      sb.append("**列挙型**: ").append(enumNode.getNameWithoutPackage()).append("\n\n");
+
+      // 列挙定数を列挙
+      sb.append("**列挙定数**:\n");
+      int constantCount = 0;
+      for (FieldNode field : enumNode.getFields()) {
+        if (field.isEnum()) {
+          sb.append("- `").append(field.getName()).append("`\n");
+          constantCount++;
+        }
+      }
+
+      if (constantCount == 0) {
+        sb.append("（定数なし）\n");
+      }
+
+      return sb.toString();
     }
   }
 }

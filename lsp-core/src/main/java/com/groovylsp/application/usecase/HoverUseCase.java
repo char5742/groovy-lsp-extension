@@ -128,6 +128,12 @@ public class HoverUseCase {
       case CLASS:
         sb.append("class ").append(typeInfo.name());
         break;
+      case ENUM:
+        sb.append("enum ").append(typeInfo.name());
+        break;
+      case ENUM_CONSTANT:
+        sb.append(typeInfo.name()).append(" : ").append(typeInfo.type());
+        break;
     }
 
     sb.append("\n```");
