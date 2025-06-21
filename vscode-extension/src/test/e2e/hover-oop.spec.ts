@@ -48,8 +48,11 @@ describe('オブジェクト指向機能のホバーE2Eテスト', () => {
       'record Personの情報が表示される必要があります',
     );
 
-    // 将来的にはコンポーネント（name, age, email）も含まれるべき
-    // ok(hoverContent.includes('name') && hoverContent.includes('age'), 'コンポーネント情報が含まれる必要があります');
+    // コンポーネント（name, age, email）が含まれることを確認
+    ok(
+      hoverContent.includes('name') && hoverContent.includes('age') && hoverContent.includes('email'),
+      `コンポーネント情報が含まれる必要があります。実際の内容: "${hoverContent}"`,
+    );
   });
 
   it('ネストクラスにホバーすると完全修飾名が表示される', async () => {
@@ -108,6 +111,8 @@ describe('オブジェクト指向機能のホバーE2Eテスト', () => {
         hoverContent.includes('T') || hoverContent.includes('Number') || hoverContent.includes('type'),
         '型パラメータの情報が表示される必要があります',
       );
+    } else {
+      ok(false, 'ホバー結果が返される必要があります');
     }
   });
 

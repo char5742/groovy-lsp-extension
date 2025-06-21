@@ -366,6 +366,35 @@ public class GroovyTypeInfoService implements TypeInfoService {
         }
       }
 
+      // 型パラメータをチェック
+      GenericsType[] generics = node.getGenericsTypes();
+      if (generics != null && generics.length > 0) {
+        logger.debug("クラス {} に型パラメータが {} 個あります", node.getName(), generics.length);
+
+        // まず型パラメータ内の位置かチェック
+        boolean withinTypeParam = isPositionWithinTypeParameter(node);
+        logger.debug("型パラメータ範囲内判定結果: {}", withinTypeParam);
+
+        if (withinTypeParam) {
+          for (GenericsType generic : generics) {
+            logger.debug(
+                "型パラメータ: {}, isPlaceholder: {}", generic.getName(), generic.isPlaceholder());
+            if (generic.isPlaceholder()) {
+              logger.debug("型パラメータ {} の情報を返します", generic.getName());
+              String typeParamDoc = createTypeParameterDocumentation(generic);
+              foundTypeInfo =
+                  new TypeInfo(
+                      generic.getName(),
+                      formatGenericsType(generic),
+                      TypeInfo.Kind.CLASS,
+                      typeParamDoc,
+                      null);
+              return;
+            }
+          }
+        }
+      }
+
       // ネストクラスをチェック
       Iterator<InnerClassNode> innerClassIterator = node.getInnerClasses();
       if (innerClassIterator != null) {
@@ -548,11 +577,12 @@ public class GroovyTypeInfoService implements TypeInfoService {
       }
 
       logger.debug(
-          "visitMethod: {} (isConstructor: {}) at {}:{}",
+          "visitMethod: {} (isConstructor: {}) at {}:{}, hasOverride: {}",
           node.getName(),
           node.getName().equals("<init>"),
           node.getLineNumber(),
-          node.getColumnNumber());
+          node.getColumnNumber(),
+          hasOverrideAnnotation(node));
 
       // パラメータをチェック
       Parameter[] parameters = node.getParameters();
@@ -601,6 +631,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
           String signature = formatMethodSignature(node);
 
           if (hasOverrideAnnotation(node)) {
+            logger.debug("@Overrideアノテーション付きメソッドを検出: {}", node.getName());
             documentation = createOverrideMethodDocumentation(node);
           }
 
@@ -635,18 +666,46 @@ public class GroovyTypeInfoService implements TypeInfoService {
           column);
 
       // メソッド名の実際の位置を正確に計算
-      // Groovyのノード位置は行の最初の非空白文字を指すが、
-      // 実際のメソッド名の位置はそこから4文字分後ろ（"int "の長さ）にあることが多い
+      // 戻り値の型名の長さに基づいてオフセットを計算
+      String returnTypeName = formatTypeName(node.getReturnType());
 
-      // メソッド名の位置を計算
-      // ノード位置からのオフセットは4固定（調査結果から）
-      int methodNameStartColumn = node.getColumnNumber() + 4;
+      // ノードの列位置は1ベースで、行の最初の非空白文字（修飾子、アノテーション、または型名）を指す
+      // @Overrideアノテーションがある場合、ノードの位置は戻り値の型（String）の位置を指すことが多い
+      int methodNameStartColumn;
+
+      // 型名に応じてオフセットを計算
+      if (returnTypeName.equals("void")) {
+        methodNameStartColumn = node.getColumnNumber() + 5; // "void "の長さ
+      } else if (returnTypeName.equals("String")) {
+        methodNameStartColumn = node.getColumnNumber() + 7; // "String "の長さ
+      } else if (returnTypeName.equals("int") || returnTypeName.equals("def")) {
+        methodNameStartColumn = node.getColumnNumber() + 4; // "int "または"def "の長さ
+      } else {
+        // その他の型の場合、型名の長さ + 空白1文字
+        methodNameStartColumn = node.getColumnNumber() + returnTypeName.length() + 1;
+      }
 
       // デバッグログ追加
-      logger.debug("メソッド名位置計算: メソッド名開始位置={}", methodNameStartColumn);
+      logger.debug("メソッド名位置計算: 型名={}, メソッド名開始位置={}", returnTypeName, methodNameStartColumn);
+      logger.debug(
+          "メソッド位置比較: ターゲット行={}, メソッド行={}, ターゲット列={}, 開始列={}, 終了列={}",
+          line,
+          node.getLineNumber(),
+          column,
+          methodNameStartColumn,
+          methodNameStartColumn + node.getName().length());
 
       // targetPositionは既に1ベースに変換されているので、そのまま比較
-      return line == node.getLineNumber()
+      // @Overrideアノテーションがある場合、ノードの行番号が実際のメソッド宣言行と異なる可能性がある
+      boolean lineMatch = line == node.getLineNumber();
+
+      // @Overrideアノテーションがある場合、次の行も確認
+      if (!lineMatch && hasOverrideAnnotation(node)) {
+        lineMatch = line == node.getLineNumber() + 1;
+        logger.debug("@Overrideアノテーション付きメソッドのため、次の行も確認: {}", lineMatch);
+      }
+
+      return lineMatch
           && column >= methodNameStartColumn
           && column < methodNameStartColumn + node.getName().length();
     }
@@ -1536,15 +1595,24 @@ public class GroovyTypeInfoService implements TypeInfoService {
      */
     private boolean isRecordClass(ClassNode node) {
       // Groovy 4.0+ のレコードクラスの判定
-      // 一時的に、テストを通すために名前でも判定
-      String className = node.getNameWithoutPackage();
-      if (className.equals("Person") && node.getDeclaredConstructors().size() > 0) {
-        // Personクラスでコンストラクタがある場合はレコードとして扱う（テスト用）
-        logger.debug("Personクラスをレコードとして検出");
-        return true;
+
+      // 1. isRecord() メソッドがある場合はそれを使用（Groovy 4.0+）
+      try {
+        // リフレクションを使用してisRecord()メソッドの存在をチェック
+        java.lang.reflect.Method isRecordMethod = node.getClass().getMethod("isRecord");
+        if (isRecordMethod != null) {
+          Object result = isRecordMethod.invoke(node);
+          if (result instanceof Boolean && (Boolean) result) {
+            logger.debug("isRecord()メソッドでレコードクラスを検出: {}", node.getName());
+            return true;
+          }
+        }
+      } catch (Exception e) {
+        // isRecord()メソッドが存在しない場合は他の方法で判定
+        logger.debug("isRecord()メソッドが利用できません: {}", e.getMessage());
       }
 
-      // アノテーションをチェック
+      // 2. レコード関連のアノテーションをチェック
       if (node.getAnnotations() != null) {
         boolean hasRecordAnnotation =
             node.getAnnotations().stream()
@@ -1553,20 +1621,57 @@ public class GroovyTypeInfoService implements TypeInfoService {
                       String name = ann.getClassNode().getName();
                       return name.equals("groovy.transform.RecordType")
                           || name.equals("RecordType")
-                          || name.contains("RecordBase");
+                          || name.equals("groovy.transform.RecordBase")
+                          || name.equals("RecordBase");
                     });
         if (hasRecordAnnotation) {
+          logger.debug("レコードアノテーションでレコードクラスを検出: {}", node.getName());
           return true;
         }
       }
 
-      // スーパークラスをチェック（java.lang.Recordを継承）
+      // 3. スーパークラスをチェック（java.lang.Recordを継承）
       ClassNode superClass = node.getSuperClass();
       while (superClass != null && !superClass.getName().equals("java.lang.Object")) {
         if (superClass.getName().equals("java.lang.Record")) {
+          logger.debug("java.lang.Record継承でレコードクラスを検出: {}", node.getName());
           return true;
         }
         superClass = superClass.getSuperClass();
+      }
+
+      // 4. レコードクラスの特徴をチェック
+      // レコードクラスは通常、finalで、特定のコンストラクタパターンを持つ
+      if (java.lang.reflect.Modifier.isFinal(node.getModifiers())) {
+        // コンパクトコンストラクタがあるかチェック
+        for (MethodNode constructor : node.getDeclaredConstructors()) {
+          if (!constructor.isSynthetic()) {
+            Parameter[] params = constructor.getParameters();
+            if (params != null && params.length > 0) {
+              // すべてのパラメータ名がフィールド名と一致するかチェック
+              boolean allMatch = true;
+              for (Parameter param : params) {
+                boolean hasMatchingField = false;
+                for (FieldNode field : node.getFields()) {
+                  if (field.getName().equals(param.getName())
+                      && !field.isStatic()
+                      && java.lang.reflect.Modifier.isFinal(field.getModifiers())) {
+                    hasMatchingField = true;
+                    break;
+                  }
+                }
+                if (!hasMatchingField) {
+                  allMatch = false;
+                  break;
+                }
+              }
+              if (allMatch) {
+                logger.debug("構造的特徴からレコードクラスを推定: {}", node.getName());
+                return true;
+              }
+            }
+          }
+        }
       }
 
       return false;
@@ -1600,19 +1705,30 @@ public class GroovyTypeInfoService implements TypeInfoService {
       // コンポーネント（コンストラクタのパラメータ）を列挙
       sb.append("**コンポーネント**:\n");
 
-      // プライマリコンストラクタを探す
+      // レコードクラスのプライマリコンストラクタ（最もパラメータ数が多いもの）を探す
+      MethodNode primaryConstructor = null;
+      int maxParams = 0;
+
       for (MethodNode constructor : recordNode.getDeclaredConstructors()) {
         if (!constructor.isSynthetic()) {
           Parameter[] params = constructor.getParameters();
-          if (params != null && params.length > 0) {
-            for (Parameter param : params) {
-              sb.append("- `")
-                  .append(param.getName())
-                  .append("` : ")
-                  .append(formatTypeName(param.getType()))
-                  .append("\n");
-            }
-            break; // 最初の非合成コンストラクタのみ表示
+          if (params != null && params.length > maxParams) {
+            primaryConstructor = constructor;
+            maxParams = params.length;
+          }
+        }
+      }
+
+      // プライマリコンストラクタのパラメータを表示
+      if (primaryConstructor != null) {
+        Parameter[] params = primaryConstructor.getParameters();
+        if (params != null) {
+          for (Parameter param : params) {
+            sb.append("- `")
+                .append(param.getName())
+                .append("` : ")
+                .append(formatTypeName(param.getType()))
+                .append("\n");
           }
         }
       }
@@ -1771,6 +1887,167 @@ public class GroovyTypeInfoService implements TypeInfoService {
         }
       }
       return true;
+    }
+
+    /**
+     * 指定位置が型パラメータ内にあるかチェック
+     *
+     * @param node クラスノード
+     * @return 位置が型パラメータ内にある場合true
+     */
+    private boolean isPositionWithinTypeParameter(ClassNode node) {
+      int line = targetPosition.getLine();
+      int column = targetPosition.getCharacter();
+
+      // デバッグログ
+      logger.debug(
+          "型パラメータ位置チェック: クラス名={}, ノード位置={}:{}, ターゲット位置={}:{}",
+          node.getName(),
+          node.getLineNumber(),
+          node.getColumnNumber(),
+          line,
+          column);
+
+      // 型パラメータがあるか確認
+      GenericsType[] generics = node.getGenericsTypes();
+      if (generics == null || generics.length == 0) {
+        return false;
+      }
+
+      // 型パラメータはクラス宣言と同じ行にある必要がある
+      if (line != node.getLineNumber()) {
+        return false;
+      }
+
+      String className = node.getNameWithoutPackage();
+
+      // 実際のソースコードを取得して正確な位置を特定
+      Option<String> contentOption = documentContentService.getContent(uri);
+      if (contentOption.isDefined()) {
+        String sourceCode = contentOption.get();
+        String[] lines = sourceCode.split("\n");
+
+        if (line - 1 < lines.length) {
+          String lineContent = lines[line - 1];
+          logger.debug("該当行の内容: '{}'", lineContent);
+
+          // クラス名の位置を検索
+          int classNameIndex = lineContent.indexOf(className);
+          if (classNameIndex >= 0) {
+            // < の位置を検索
+            int genericStartIndex = lineContent.indexOf('<', classNameIndex + className.length());
+            int genericEndIndex = lineContent.indexOf('>', genericStartIndex);
+
+            if (genericStartIndex >= 0 && genericEndIndex >= 0) {
+              // VSCodeの位置は0ベース、カラム位置は1ベースに変換されているので調整
+              boolean inRange = column - 1 > genericStartIndex && column - 1 < genericEndIndex;
+
+              logger.debug(
+                  "型パラメータ範囲: <の位置={}, >の位置={}, カラム位置={}, 範囲内={}",
+                  genericStartIndex,
+                  genericEndIndex,
+                  column - 1,
+                  inRange);
+
+              return inRange;
+            }
+          }
+        }
+      }
+
+      // フォールバック: 推定ベースの判定
+      // "class Container<T extends Number>" の場合
+      // - class = 5文字
+      // - スペース = 1文字
+      // - Container = 9文字
+      // - < = 1文字（位置16）
+
+      int keywordLength = 6; // "class "
+      if (node.isInterface()) {
+        keywordLength = 10; // "interface "
+      } else if (node.isEnum()) {
+        keywordLength = 5; // "enum "
+      }
+
+      // ノードの列位置は行の先頭（1）を指すことが多い
+      int nodeColumn = node.getColumnNumber();
+      int classNameStart = nodeColumn + keywordLength - 1;
+      int classNameEnd = classNameStart + className.length();
+
+      // < の位置
+      int genericStartPosition = classNameEnd;
+
+      // 型パラメータの範囲を判定（< から > まで）
+      // 通常は50文字以内に収まる
+      boolean result = column > genericStartPosition && column < genericStartPosition + 50;
+
+      logger.debug(
+          "型パラメータ範囲判定（フォールバック）: className={}, nodeColumn={}, keywordLength={}, genericStart={}, column={}, 結果: {}",
+          className,
+          nodeColumn,
+          keywordLength,
+          genericStartPosition,
+          column,
+          result);
+
+      return result;
+    }
+
+    /**
+     * 型パラメータのドキュメントを生成
+     *
+     * @param generic 型パラメータ
+     * @return ドキュメント文字列
+     */
+    private String createTypeParameterDocumentation(GenericsType generic) {
+      var sb = new StringBuilder();
+      sb.append("**型パラメータ**: ").append(generic.getName()).append("\n\n");
+
+      // 上限境界がある場合
+      if (generic.getUpperBounds() != null && generic.getUpperBounds().length > 0) {
+        sb.append("**上限**: ");
+        for (int i = 0; i < generic.getUpperBounds().length; i++) {
+          if (i > 0) {
+            sb.append(" & ");
+          }
+          sb.append(formatTypeName(generic.getUpperBounds()[i]));
+        }
+        sb.append("\n");
+      }
+
+      // 下限境界がある場合（superキーワード）
+      if (generic.getLowerBound() != null) {
+        sb.append("**下限**: ").append(formatTypeName(generic.getLowerBound())).append("\n");
+      }
+
+      return sb.toString();
+    }
+
+    /**
+     * ジェネリクス型をフォーマット
+     *
+     * @param generic ジェネリクス型
+     * @return フォーマットされた文字列
+     */
+    private String formatGenericsType(GenericsType generic) {
+      if (generic.isPlaceholder()) {
+        var sb = new StringBuilder();
+        sb.append(generic.getName());
+
+        // 上限境界がある場合
+        if (generic.getUpperBounds() != null && generic.getUpperBounds().length > 0) {
+          sb.append(" extends ");
+          for (int i = 0; i < generic.getUpperBounds().length; i++) {
+            if (i > 0) {
+              sb.append(" & ");
+            }
+            sb.append(formatTypeName(generic.getUpperBounds()[i]));
+          }
+        }
+
+        return sb.toString();
+      }
+      return formatTypeName(generic.getType());
     }
   }
 }
