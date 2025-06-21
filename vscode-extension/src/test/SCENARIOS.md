@@ -2,9 +2,9 @@
 
 ## 概要
 
-- **総テスト数**: 79
+- **総テスト数**: 87
 - **単体テスト**: 12
-- **E2Eテスト**: 67
+- **E2Eテスト**: 75
 
 ## 単体テスト
 
@@ -101,6 +101,17 @@
 - Gradleファイルに対して診断が実行される
 - Gradle Kotlinファイルに対して診断が実行される
 
+### クロージャ変数itのホバーE2Eテスト
+*ファイル: src/test/e2e/hover-closure-it.spec.ts*
+
+- Integerリストのeachクロージャ内でitがInteger型として表示される
+- Stringリストのeachクロージャ内でitがString型として表示される
+- MapのeachクロージャでitがMap.Entry型として表示される
+- findAllクロージャ内でitが正しい型として表示される
+- カスタムクラスのリストでitが正しい型として表示される
+- ネストされたクロージャで内側のitが正しい型として表示される
+- timesメソッドのクロージャでitがInteger型として表示される
+
 ### ホバー機能の詳細なE2Eテスト
 *ファイル: src/test/e2e/hover-detailed.spec.ts*
 
@@ -139,6 +150,7 @@
 - インポートされたクラスの静的メソッド（Instant.now()）でも情報が表示される
 - 静的フィールド（Math.PI）でフィールド情報が表示される
 - import aliasを使用した呼び出し（LD.now()）で元のクラス情報が表示される
+- import alias自体（LD）にホバーすると元のクラス名が表示される
 
 ### ホバー機能の型推論E2Eテスト
 *ファイル: src/test/e2e/hover-type-inference.spec.ts*

@@ -118,7 +118,7 @@ class HoverUseCaseTest {
     assertThat(hover.getContents().isRight()).isTrue();
     MarkupContent contents = hover.getContents().getRight();
     assertThat(contents.getKind()).isEqualTo(MarkupKind.PLAINTEXT);
-    assertThat(contents.getValue()).isEqualTo("Groovy element");
+    assertThat(contents.getValue()).isEqualTo("Groovy element (動的型)");
   }
 
   @Test

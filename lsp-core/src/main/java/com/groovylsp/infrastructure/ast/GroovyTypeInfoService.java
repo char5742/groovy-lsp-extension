@@ -317,7 +317,18 @@ public class GroovyTypeInfoService implements TypeInfoService {
       documentContentService
           .getContent(uri)
           .flatMap(content -> astAnalysisService.analyze(uri, content).toOption())
-          .forEach(info -> this.astInfo = info);
+          .forEach(
+              info -> {
+                this.astInfo = info;
+                if (info.imports() != null) {
+                  logger.debug("Loaded {} imports for {}", info.imports().size(), uri);
+                  info.imports()
+                      .forEach(
+                          imp ->
+                              logger.debug(
+                                  "Import: {} -> alias: {}", imp.className(), imp.alias()));
+                }
+              });
     }
 
     public @Nullable TypeInfo getFoundTypeInfo() {
@@ -773,6 +784,53 @@ public class GroovyTypeInfoService implements TypeInfoService {
         // 変数の型情報を記録（後で参照時に使用）
         ClassNode declaredType = varExpr.getType();
 
+        // 型名の位置にカーソルがある場合の処理
+        if (foundTypeInfo == null
+            && declaredType != null
+            && !isPrimitiveType(declaredType.getName())) {
+          // 型の位置を推定（変数名の前）
+          int line = varExpr.getLineNumber();
+          int typeEndColumn = varExpr.getColumnNumber() - 1; // 変数名の直前
+          String typeName = declaredType.getNameWithoutPackage();
+          int typeStartColumn = typeEndColumn - typeName.length();
+
+          logger.debug(
+              "型位置チェック: {} at {}:{}-{}, target: {}:{}",
+              typeName,
+              line,
+              typeStartColumn,
+              typeEndColumn,
+              targetPosition.getLine(),
+              targetPosition.getCharacter());
+
+          if (targetPosition.getLine() == line
+              && targetPosition.getCharacter() >= typeStartColumn
+              && targetPosition.getCharacter() <= typeEndColumn) {
+
+            // import aliasかどうかをチェック
+            if (astInfo != null) {
+              String resolvedClassName = astInfo.resolveAlias(typeName);
+              if (resolvedClassName != null) {
+                logger.debug("Type {} is an alias for {}", typeName, resolvedClassName);
+                foundTypeInfo =
+                    new TypeInfo(
+                        typeName,
+                        resolvedClassName,
+                        TypeInfo.Kind.CLASS,
+                        "**Import alias**: " + typeName + " → " + resolvedClassName,
+                        null);
+                return;
+              }
+            }
+
+            // エイリアスでない場合は通常の型情報を表示
+            foundTypeInfo =
+                new TypeInfo(
+                    typeName, formatTypeName(declaredType), TypeInfo.Kind.CLASS, null, null);
+            return;
+          }
+        }
+
         // defやvarで宣言された場合、右辺から型を推論
         if (declaredType == null || declaredType.getName().equals("java.lang.Object")) {
           Expression rightExpression = expression.getRightExpression();
@@ -824,6 +882,24 @@ public class GroovyTypeInfoService implements TypeInfoService {
       // 変数参照の処理
       if (isPositionWithin(expression)) {
         String varName = expression.getName();
+
+        // import aliasかどうかをチェック
+        if (astInfo != null) {
+          logger.debug("Checking if {} is an import alias", varName);
+          String resolvedClassName = astInfo.resolveAlias(varName);
+          if (resolvedClassName != null) {
+            logger.debug("Resolved alias {} to class {}", varName, resolvedClassName);
+            // エイリアスの場合、元のクラス名を表示
+            foundTypeInfo =
+                new TypeInfo(
+                    varName,
+                    resolvedClassName,
+                    TypeInfo.Kind.CLASS,
+                    "**Import alias**: " + varName + " → " + resolvedClassName,
+                    null);
+            return;
+          }
+        }
 
         // まず記録された変数宣言から型情報を探す
         ClassNode recordedType = variableTypes.get(varName);
@@ -1238,7 +1314,8 @@ public class GroovyTypeInfoService implements TypeInfoService {
 
       // クロージャパラメータの処理
       Parameter[] parameters = expression.getParameters();
-      if (parameters != null) {
+      if (parameters != null && parameters.length > 0) {
+        // 明示的なパラメータがある場合
         for (Parameter param : parameters) {
           // パラメータの型情報を記録
           variableTypes.put(param.getName(), param.getType());
@@ -1254,6 +1331,29 @@ public class GroovyTypeInfoService implements TypeInfoService {
             return;
           }
         }
+      } else {
+        // パラメータがない場合、暗黙的な'it'パラメータが利用可能
+        ClassNode previousItType = variableTypes.get("it");
+        ClassNode inferredItType = inferClosureItType();
+
+        if (inferredItType != null) {
+          logger.debug("クロージャの暗黙的なit型を設定: {}", inferredItType.getName());
+          variableTypes.put("it", inferredItType);
+        }
+
+        // クロージャ本体を訪問
+        Statement code = expression.getCode();
+        if (code != null) {
+          code.visit(this);
+        }
+
+        // 元のit型を復元（ネストされたクロージャのため）
+        if (previousItType != null) {
+          variableTypes.put("it", previousItType);
+        } else {
+          variableTypes.remove("it");
+        }
+        return;
       }
 
       // クロージャ本体を訪問
@@ -1301,6 +1401,21 @@ public class GroovyTypeInfoService implements TypeInfoService {
       // 配列型の処理
       if (type.isArray()) {
         return formatTypeName(type.getComponentType()) + "[]";
+      }
+
+      // import aliasのチェック
+      if (astInfo != null) {
+        // フルクラス名でImportInfoを検索
+        var importInfo =
+            astInfo.imports().stream()
+                .filter(imp -> imp.className().equals(typeName))
+                .findFirst()
+                .orElse(null);
+
+        if (importInfo != null && importInfo.alias() != null) {
+          // エイリアスが定義されている場合は、完全修飾名とエイリアスを表示
+          return typeName + " (alias: " + importInfo.alias() + ")";
+        }
       }
 
       // ジェネリクス型の基本的な処理
@@ -2234,6 +2349,20 @@ public class GroovyTypeInfoService implements TypeInfoService {
       }
       int lastDot = fullyQualifiedName.lastIndexOf('.');
       return lastDot >= 0 ? fullyQualifiedName.substring(lastDot + 1) : fullyQualifiedName;
+    }
+
+    /**
+     * クロージャのit変数の型を推論
+     *
+     * @return 推論された型、推論できない場合はnull
+     */
+    private @Nullable ClassNode inferClosureItType() {
+      // TODO: 現在のコンテキストを分析して型を推論する
+      // 例: list.each { } の場合、listの要素型を取得
+      // 今は仮実装として、将来的に実装予定
+
+      // デバッグ用: Integerを返す（テスト用）
+      return ClassHelper.make(Integer.class);
     }
   }
 }

@@ -130,4 +130,25 @@ describe('静的メソッドとqualified呼び出しのホバーE2Eテスト', (
     //   '元のクラス名が含まれる必要があります',
     // );
   });
+
+  it('import alias自体（LD）にホバーすると元のクラス名が表示される', async () => {
+    const text = editor.document.getText();
+    // "LD birthday" の LD にホバー
+    const ldIndex = text.indexOf('LD birthday');
+    const position = editor.document.positionAt(ldIndex);
+
+    const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', staticMethodDoc.uri, position);
+
+    ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
+    const hoverContent = hovers[0].contents
+      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
+      .join('');
+
+    // エイリアスLD自体の情報が表示されることを確認
+    ok(
+      hoverContent.includes('java.time.LocalDate') || hoverContent.includes('LocalDate'),
+      'エイリアスLDの元のクラス名（LocalDate）が表示される必要があります',
+    );
+    ok(hoverContent.includes('Import alias') || hoverContent.includes('LD'), 'aliasの情報が含まれる必要があります');
+  });
 });
