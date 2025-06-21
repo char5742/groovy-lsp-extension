@@ -98,17 +98,22 @@ public class GroovyTypeInfoService implements TypeInfoService {
                 return Either.left("モジュールノードが見つかりません");
               }
 
+              logger.debug("パース成功。クラス数: {}", parseResult.getClasses().size());
+
               // 指定位置の要素を探索
               var visitor = new TypeInfoVisitor(position, uri);
               for (ClassNode classNode : parseResult.getClasses()) {
+                logger.debug("クラスを訪問: {}", classNode.getName());
                 visitor.visitClass(classNode);
               }
 
               TypeInfo typeInfo = visitor.getFoundTypeInfo();
               if (typeInfo != null) {
+                logger.debug("ASTで型情報を発見: {}", typeInfo.name());
                 return Either.right(typeInfo);
               }
 
+              logger.debug("ASTで見つからなかったため、シンボルテーブルから検索");
               // ASTで見つからない場合は、シンボルテーブルから検索
               return findTypeInfoFromSymbolTable(uri, position);
             });
@@ -302,6 +307,12 @@ public class GroovyTypeInfoService implements TypeInfoService {
       this.targetPosition =
           new Position(targetPosition.getLine() + 1, targetPosition.getCharacter() + 1);
       this.uri = uri;
+      logger.debug(
+          "TypeInfoVisitor initialized - Original position: {}:{}, Adjusted position: {}:{}",
+          targetPosition.getLine(),
+          targetPosition.getCharacter(),
+          this.targetPosition.getLine(),
+          this.targetPosition.getCharacter());
       // ドキュメント内容を取得してAST情報を解析
       documentContentService
           .getContent(uri)
@@ -334,48 +345,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
           targetPosition.getCharacter(),
           node.getGenericsTypes() != null && node.getGenericsTypes().length > 0);
 
-      // クラスのすべてのフィールドの型情報を事前に記録
-      // （メソッド内からフィールドを参照する際に必要）
-      for (FieldNode field : node.getFields()) {
-        // defで宣言されたフィールドの型推論を適用
-        ClassNode fieldType = inferFieldType(field);
-        variableTypes.put(field.getName(), fieldType);
-        logger.debug(
-            "クラス {} のフィールドを事前記録: {} (型: {})", node.getName(), field.getName(), fieldType.getName());
-      }
-
-      // まず子要素（フィールドとメソッド）をチェック
-      // フィールドをチェック
-      for (FieldNode field : node.getFields()) {
-        visitField(field);
-        if (foundTypeInfo != null) {
-          return;
-        }
-      }
-
-      // コンストラクタをチェック
-      for (MethodNode constructor : node.getDeclaredConstructors()) {
-        logger.debug("クラス {} のコンストラクタを訪問: {}", node.getName(), constructor.getName());
-        visitMethod(constructor);
-        if (foundTypeInfo != null) {
-          return;
-        }
-      }
-
-      // メソッドをチェック
-      for (MethodNode method : node.getMethods()) {
-        logger.debug(
-            "クラス {} のメソッドを訪問: {} (isConstructor: {})",
-            node.getName(),
-            method.getName(),
-            method.getName().equals("<init>"));
-        visitMethod(method);
-        if (foundTypeInfo != null) {
-          return;
-        }
-      }
-
-      // 型パラメータをチェック
+      // 最初に型パラメータをチェック（優先度を上げる）
       GenericsType[] generics = node.getGenericsTypes();
       if (generics != null && generics.length > 0) {
         logger.debug("クラス {} に型パラメータが {} 個あります", node.getName(), generics.length);
@@ -404,6 +374,47 @@ public class GroovyTypeInfoService implements TypeInfoService {
               return;
             }
           }
+        }
+      }
+
+      // クラスのすべてのフィールドの型情報を事前に記録
+      // （メソッド内からフィールドを参照する際に必要）
+      for (FieldNode field : node.getFields()) {
+        // defで宣言されたフィールドの型推論を適用
+        ClassNode fieldType = inferFieldType(field);
+        variableTypes.put(field.getName(), fieldType);
+        logger.debug(
+            "クラス {} のフィールドを事前記録: {} (型: {})", node.getName(), field.getName(), fieldType.getName());
+      }
+
+      // 次に子要素（フィールドとメソッド）をチェック
+      // フィールドをチェック
+      for (FieldNode field : node.getFields()) {
+        visitField(field);
+        if (foundTypeInfo != null) {
+          return;
+        }
+      }
+
+      // コンストラクタをチェック
+      for (MethodNode constructor : node.getDeclaredConstructors()) {
+        logger.debug("クラス {} のコンストラクタを訪問: {}", node.getName(), constructor.getName());
+        visitMethod(constructor);
+        if (foundTypeInfo != null) {
+          return;
+        }
+      }
+
+      // メソッドをチェック
+      for (MethodNode method : node.getMethods()) {
+        logger.debug(
+            "クラス {} のメソッドを訪問: {} (isConstructor: {})",
+            node.getName(),
+            method.getName(),
+            method.getName().equals("<init>"));
+        visitMethod(method);
+        if (foundTypeInfo != null) {
+          return;
         }
       }
 
@@ -860,7 +871,11 @@ public class GroovyTypeInfoService implements TypeInfoService {
 
       // メソッド呼び出しの処理
       Expression method = call.getMethod();
-      logger.debug("メソッド式のタイプ: {}", method != null ? method.getClass().getName() : "null");
+      Expression objectExpr = call.getObjectExpression();
+      logger.debug(
+          "メソッド式のタイプ: {}, オブジェクト式のタイプ: {}",
+          method != null ? method.getClass().getName() : "null",
+          objectExpr != null ? objectExpr.getClass().getSimpleName() : "null");
 
       // ConstantExpressionの場合も処理
       if (method instanceof ConstantExpression) {
@@ -883,22 +898,44 @@ public class GroovyTypeInfoService implements TypeInfoService {
           // メソッド呼び出しのレシーバーの型を取得
           Expression objectExpression = call.getObjectExpression();
           String receiverTypeName = null;
+          boolean isQualifiedCall = false;
 
           if (objectExpression instanceof VariableExpression) {
             var varExpr = (VariableExpression) objectExpression;
-            // 変数の型を取得
-            ClassNode recordedType = variableTypes.get(varExpr.getName());
-            if (recordedType != null) {
-              receiverTypeName = recordedType.getName();
+            String varName = varExpr.getName();
+
+            // qualified呼び出しかどうかを判定（java.time.Instantなど）
+            if (varName.contains(".")) {
+              // これは qualified クラス参照の可能性がある
+              receiverTypeName = varName;
+              isQualifiedCall = true;
             } else {
-              // シンボルテーブルから変数の型を検索
-              Option<SymbolDefinition> varSymbol =
-                  scopeManager.findSymbolAt(uri, targetPosition, varExpr.getName());
-              if (varSymbol.isDefined()) {
-                // 型情報は別途取得する必要がある
-                receiverTypeName = varExpr.getType().getName();
+              // 変数の型を取得
+              ClassNode recordedType = variableTypes.get(varName);
+              if (recordedType != null) {
+                receiverTypeName = recordedType.getName();
+              } else {
+                // シンボルテーブルから変数の型を検索
+                Option<SymbolDefinition> varSymbol =
+                    scopeManager.findSymbolAt(uri, targetPosition, varName);
+                if (varSymbol.isDefined()) {
+                  receiverTypeName = varSymbol.get().qualifiedName();
+                }
               }
             }
+          } else if (objectExpression instanceof PropertyExpression) {
+            // java.time.Instant.now() のような qualified 呼び出し
+            receiverTypeName = getQualifiedNameFromExpression(objectExpression);
+            isQualifiedCall = true;
+          } else if (objectExpression instanceof ClassExpression) {
+            // Math.sin() のような直接的なクラス参照
+            var classExpr = (ClassExpression) objectExpression;
+            receiverTypeName = classExpr.getType().getName();
+            logger.debug("ClassExpression detected: {}", receiverTypeName);
+          } else {
+            logger.debug(
+                "Unknown objectExpression type: {}",
+                objectExpression != null ? objectExpression.getClass().getSimpleName() : "null");
           }
 
           // レシーバーの型が分かった場合、その型のメソッドを検索
@@ -920,12 +957,25 @@ public class GroovyTypeInfoService implements TypeInfoService {
           if (symbolOption.isDefined()) {
             foundTypeInfo = createTypeInfoFromSymbol(symbolOption.get());
           } else {
-            // メソッド呼び出しとして扱う（改善版：レシーバー情報を含める）
-            String description =
-                receiverTypeName != null
-                    ? receiverTypeName + "." + methodName + "(...)"
-                    : methodName + "(...)";
-            foundTypeInfo = new TypeInfo(methodName, description, TypeInfo.Kind.METHOD, null, null);
+            // メソッド呼び出しとして扱う（改善版：FQN情報を含める）
+            String signature;
+            String documentation = null;
+
+            if (isQualifiedCall && receiverTypeName != null) {
+              // qualified呼び出しの場合はFQNを含める
+              signature = receiverTypeName + "." + methodName + "(...)";
+              documentation = "**完全修飾メソッド呼び出し**\n\n" + "クラス: " + receiverTypeName;
+            } else if (receiverTypeName != null) {
+              // 通常のメソッド呼び出し
+              String simpleClassName = getSimpleClassName(receiverTypeName);
+              signature = simpleClassName + "." + methodName + "(...)";
+              documentation = "**メソッド呼び出し**\n\n" + "クラス: " + receiverTypeName;
+            } else {
+              signature = methodName + "(...)";
+            }
+
+            foundTypeInfo =
+                new TypeInfo(methodName, signature, TypeInfo.Kind.METHOD, documentation, null);
           }
           return;
         }
@@ -1258,35 +1308,71 @@ public class GroovyTypeInfoService implements TypeInfoService {
       if (generics != null && generics.length > 0) {
         var sb = new StringBuilder(type.getNameWithoutPackage());
         sb.append("<");
+
+        // 長い型名の省略処理
+
+        int totalLength = sb.length();
+
         for (int i = 0; i < generics.length; i++) {
           if (i > 0) {
             sb.append(", ");
           }
+
           GenericsType generic = generics[i];
+          String genericTypeName;
 
           // 型パラメータ名
           if (generic.isPlaceholder()) {
-            sb.append(generic.getName());
+            genericTypeName = generic.getName();
 
-            // 上限境界がある場合
+            // 上限境界がある場合（長い場合は省略）
             if (generic.getUpperBounds() != null && generic.getUpperBounds().length > 0) {
-              sb.append(" extends ");
-              for (int j = 0; j < generic.getUpperBounds().length; j++) {
-                if (j > 0) {
-                  sb.append(" & ");
-                }
-                sb.append(formatTypeName(generic.getUpperBounds()[j]));
+              genericTypeName += " extends ";
+              if (generic.getUpperBounds().length == 1) {
+                genericTypeName += formatTypeName(generic.getUpperBounds()[0]);
+              } else {
+                // 複数の境界がある場合は最初のものだけ表示
+                genericTypeName += formatTypeName(generic.getUpperBounds()[0]) + " & ...";
               }
             }
           } else {
-            sb.append(formatTypeName(generic.getType()));
+            genericTypeName = formatTypeName(generic.getType());
+          }
+
+          // 長すぎる場合は省略
+          totalLength += genericTypeName.length();
+          if (totalLength > 80 && i < generics.length - 1) {
+            sb.append(genericTypeName).append(", ...");
+
+            break;
+          } else {
+            sb.append(genericTypeName);
           }
         }
+
         sb.append(">");
         return sb.toString();
       }
 
-      return type.getNameWithoutPackage();
+      // 通常の型名もパッケージが長い場合は適切に省略
+      String simpleClassName = type.getNameWithoutPackage();
+
+      // パッケージ名を安全に取得
+      if (typeName.contains(".")) {
+        int lastDotIndex = typeName.lastIndexOf('.');
+        String packageName = typeName.substring(0, lastDotIndex);
+
+        // よく使われるパッケージは完全表示
+        if (packageName.equals("java.util")
+            || packageName.equals("java.io")
+            || packageName.equals("java.net")
+            || packageName.equals("java.time")) {
+          return typeName; // 完全修飾名を表示
+        }
+      }
+
+      // その他のパッケージは単純名を表示
+      return simpleClassName;
     }
 
     /**
@@ -1965,12 +2051,12 @@ public class GroovyTypeInfoService implements TypeInfoService {
       // デバッグログ
       logger.debug(
           "型パラメータ位置チェック: クラス名={}, ノード位置={}:{}, ターゲット位置={}:{}, 列情報（1ベース）={}",
-          node.getName(),
+          node.getNameWithoutPackage(),
           node.getLineNumber(),
           node.getColumnNumber(),
           line,
           column,
-          column + 1);
+          column);
 
       // 型パラメータがあるか確認
       GenericsType[] generics = node.getGenericsTypes();
@@ -2027,10 +2113,9 @@ public class GroovyTypeInfoService implements TypeInfoService {
       }
 
       // フォールバック: 推定ベースの判定
+      // 上記で lineContent が取得できなかった場合の簡易判定
       // "class Container<T extends Number>" の場合
-      // - class = 6文字
-      // - Container = 9文字
-      // - < = 1文字（位置15）
+      // VSCodeの位置は0ベースで、targetPositionは+1済み
 
       int keywordLength = 6; // "class "
       if (node.isInterface()) {
@@ -2039,24 +2124,21 @@ public class GroovyTypeInfoService implements TypeInfoService {
         keywordLength = 5; // "enum "
       }
 
-      // ノードの列位置は行の先頭（1）を指すことが多い
-      int nodeColumn = node.getColumnNumber();
-      int classNameStart = nodeColumn - 1 + keywordLength;
-      int classNameEnd = classNameStart + className.length();
+      // ノードの列位置を基準に判定
+      // Container<T の '<' の後から '>' の前までが型パラメータ範囲
+      // クラス名の長さ + キーワードの長さで '<' の位置を推定
+      int estimatedGenericStart = keywordLength + className.length();
 
-      // < の位置
-      int genericStartPosition = classNameEnd;
-
-      // 型パラメータの範囲を判定（< から > まで）
-      // 通常は50文字以内に収まる
-      boolean result = column > genericStartPosition && column < genericStartPosition + 50;
+      // VSCodeの0ベース位置に合わせて調整
+      // targetPositionは既に+1されているので、実際のVSCode位置と比較
+      boolean result = column > estimatedGenericStart && column < estimatedGenericStart + 50;
 
       logger.debug(
-          "型パラメータ範囲判定（フォールバック）: className={}, nodeColumn={}, keywordLength={}, genericStart={}, column={}, 結果: {}",
+          "型パラメータ範囲判定（フォールバック）: className={}, keywordLength={}, "
+              + "estimatedGenericStart={}, column={}, 結果: {}",
           className,
-          nodeColumn,
           keywordLength,
-          genericStartPosition,
+          estimatedGenericStart,
           column,
           result);
 
@@ -2118,6 +2200,40 @@ public class GroovyTypeInfoService implements TypeInfoService {
         return sb.toString();
       }
       return formatTypeName(generic.getType());
+    }
+
+    /**
+     * 式から完全修飾名を取得
+     *
+     * @param expression 式
+     * @return 完全修飾名
+     */
+    private String getQualifiedNameFromExpression(Expression expression) {
+      if (expression instanceof PropertyExpression) {
+        var propExpr = (PropertyExpression) expression;
+        String objectName = getQualifiedNameFromExpression(propExpr.getObjectExpression());
+        String propertyName = propExpr.getPropertyAsString();
+        return objectName + "." + propertyName;
+      } else if (expression instanceof VariableExpression) {
+        return ((VariableExpression) expression).getName();
+      } else if (expression instanceof ClassExpression) {
+        return ((ClassExpression) expression).getType().getName();
+      }
+      return expression.getText();
+    }
+
+    /**
+     * 完全修飾名から単純名を取得
+     *
+     * @param fullyQualifiedName 完全修飾名
+     * @return 単純名
+     */
+    private String getSimpleClassName(String fullyQualifiedName) {
+      if (fullyQualifiedName == null) {
+        return "";
+      }
+      int lastDot = fullyQualifiedName.lastIndexOf('.');
+      return lastDot >= 0 ? fullyQualifiedName.substring(lastDot + 1) : fullyQualifiedName;
     }
   }
 }

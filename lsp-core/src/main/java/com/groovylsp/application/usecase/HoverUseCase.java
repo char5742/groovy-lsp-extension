@@ -10,6 +10,7 @@ import org.eclipse.lsp4j.Hover;
 import org.eclipse.lsp4j.HoverParams;
 import org.eclipse.lsp4j.MarkupContent;
 import org.eclipse.lsp4j.MarkupKind;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,11 +78,18 @@ public class HoverUseCase {
                 } else if (message.contains("パースエラー")) {
                   hoverText = "構文エラーのため型情報を取得できません";
                 } else if (message.contains("定義が見つかりません")) {
-                  // 定義が見つからない場合も、より具体的なメッセージ
-                  hoverText = "定義が見つかりません";
+                  // 定義が見つからない場合、より詳細な情報を提供
+                  String identifier = extractIdentifierFromMessage(message);
+                  if (identifier != null && !identifier.isEmpty()) {
+                    hoverText = String.format("'%s' の定義が見つかりません", identifier);
+                  } else {
+                    hoverText = "定義が見つかりません";
+                  }
                 } else if (message.contains("型情報が見つかりません")) {
-                  // 型情報が見つからない場合は Groovy element を表示
-                  hoverText = "Groovy element";
+                  // 型情報が見つからない場合は動的な型として表示
+                  hoverText = "Groovy element (動的型)";
+                } else if (message.contains("モジュールノードが見つかりません")) {
+                  hoverText = "ファイルの解析に失敗しました";
                 } else {
                   // その他のエラーの場合
                   hoverText = "型情報を取得できません";
@@ -144,5 +152,23 @@ public class HoverUseCase {
     }
 
     return sb.toString();
+  }
+
+  /**
+   * エラーメッセージから識別子を抽出
+   *
+   * @param message エラーメッセージ
+   * @return 識別子、抽出できない場合はnull
+   */
+  private @Nullable String extractIdentifierFromMessage(String message) {
+    // "識別子 'xxx' の定義が見つかりません" のようなメッセージから識別子を抽出
+    int startIndex = message.indexOf("'");
+    if (startIndex >= 0) {
+      int endIndex = message.indexOf("'", startIndex + 1);
+      if (endIndex > startIndex) {
+        return message.substring(startIndex + 1, endIndex);
+      }
+    }
+    return null;
   }
 }

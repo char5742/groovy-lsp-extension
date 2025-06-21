@@ -93,12 +93,11 @@ describe('オブジェクト指向機能のホバーE2Eテスト', () => {
     // ok(hoverContent.includes('Override') || hoverContent.includes('Animal'), 'オーバーライド情報が含まれる必要があります');
   });
 
-  /*
-  // 型パラメータ境界のホバー機能は未実装のためスキップ
   it('型パラメータ境界にホバーすると上限型が表示される', async () => {
     const text = editor.document.getText();
     // Container<T extends Number> のTにホバー
-    const typeParamIndex = text.indexOf('Container<T extends Number>') + 'Container<'.length;
+    const containerIndex = text.indexOf('Container<T extends Number>');
+    const typeParamIndex = containerIndex + 'Container<'.length;
     const position = editor.document.positionAt(typeParamIndex);
 
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', oopDoc.uri, position);
@@ -111,13 +110,12 @@ describe('オブジェクト指向機能のホバーE2Eテスト', () => {
       // 型パラメータの情報が表示されることを確認
       ok(
         hoverContent.includes('T') || hoverContent.includes('Number') || hoverContent.includes('type'),
-        '型パラメータの情報が表示される必要があります',
+        `型パラメータの情報が表示される必要があります。実際の内容: "${hoverContent}"`,
       );
     } else {
       ok(false, 'ホバー結果が返される必要があります');
     }
   });
-  */
 
   it('オーバーロードされたメソッド呼び出しで正しいオーバーロードが特定される', async () => {
     const text = editor.document.getText();
