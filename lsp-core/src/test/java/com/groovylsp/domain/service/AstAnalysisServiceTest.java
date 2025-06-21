@@ -417,6 +417,7 @@ class AstAnalysisServiceTest {
       var astInfo = result.get();
 
       assertThat(astInfo.imports())
+          .extracting(imp -> imp.className())
           .containsExactlyInAnyOrder(
               "java.util.List", "java.util.Map", "groovy.transform.CompileStatic");
     }

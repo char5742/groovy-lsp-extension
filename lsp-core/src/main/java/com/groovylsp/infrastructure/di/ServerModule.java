@@ -69,8 +69,14 @@ public class ServerModule {
 
   @Provides
   @Singleton
-  public TypeInfoService provideTypeInfoService(GroovyAstParser parser) {
-    return new GroovyTypeInfoService(parser);
+  public TypeInfoService provideTypeInfoService(
+      GroovyAstParser parser,
+      SymbolTable symbolTable,
+      ScopeManager scopeManager,
+      DocumentContentService documentContentService,
+      AstAnalysisService astAnalysisService) {
+    return new GroovyTypeInfoService(
+        parser, symbolTable, scopeManager, documentContentService, astAnalysisService);
   }
 
   @Provides

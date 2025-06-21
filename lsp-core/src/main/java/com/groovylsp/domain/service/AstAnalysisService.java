@@ -4,6 +4,7 @@ import com.groovylsp.domain.model.AstInfo;
 import com.groovylsp.domain.model.ClassInfo;
 import com.groovylsp.domain.model.DiagnosticItem;
 import com.groovylsp.domain.model.FieldInfo;
+import com.groovylsp.domain.model.ImportInfo;
 import com.groovylsp.domain.model.MethodInfo;
 import com.groovylsp.infrastructure.parser.GroovyAstParser;
 import io.vavr.control.Either;
@@ -75,11 +76,11 @@ public class AstAnalysisService {
     }
 
     // インポート文を取得
-    List<String> imports = new ArrayList<>();
+    List<ImportInfo> imports = new ArrayList<>();
     if (moduleNode != null && moduleNode.getImports() != null) {
       imports =
           moduleNode.getImports().stream()
-              .map(importNode -> importNode.getClassName())
+              .map(importNode -> new ImportInfo(importNode.getClassName(), importNode.getAlias()))
               .collect(Collectors.toList());
     }
 

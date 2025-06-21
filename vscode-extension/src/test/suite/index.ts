@@ -31,22 +31,37 @@ export async function run(): Promise<void> {
 
   // mochaテストを実行
   return new Promise<void>((resolve, reject) => {
+    let isResolved = false;
+
     const runner = mocha.run((failures: number) => {
-      if (failures > 0) {
-        reject(new Error(`${failures} tests failed.`));
-      } else {
-        resolve();
+      if (!isResolved) {
+        isResolved = true;
+        if (failures > 0) {
+          reject(new Error(`${failures} tests failed.`));
+        } else {
+          resolve();
+        }
       }
     });
 
-    // タイムアウト対策: 180秒でテストを強制終了（多数のテストに対応）
+    // タイムアウト対策: 300秒でテストを強制終了（多数のテストに対応）
     const timeout = setTimeout(() => {
-      runner.abort();
-      reject(new Error('Test execution timeout after 180 seconds'));
-    }, 180000);
+      if (!isResolved) {
+        isResolved = true;
+        runner.abort();
+        reject(new Error('Test execution timeout after 300 seconds'));
+      }
+    }, 300000);
 
     runner.on('end', () => {
       clearTimeout(timeout);
+      // すべてのテストが完了したら、少し待ってからプロセスを終了
+      setTimeout(() => {
+        if (!isResolved) {
+          isResolved = true;
+          resolve();
+        }
+      }, 1000);
     });
 
     // 各テストのタイムアウトエラーをキャッチ

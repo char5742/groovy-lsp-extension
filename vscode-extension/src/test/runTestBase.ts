@@ -56,8 +56,15 @@ export async function runTestSuite(options: TestRunnerOptions): Promise<void> {
 
     // VS Codeをダウンロードし、解凍してテストを実行
     await Promise.race([testPromise, timeoutPromise]);
+
+    // テスト成功時もプロセスを終了
+    setTimeout(() => {
+      process.exit(0);
+    }, 1000);
   } catch (_err) {
-    process.exit(1);
+    setTimeout(() => {
+      process.exit(1);
+    }, 1000);
   }
 }
 
@@ -65,11 +72,7 @@ export async function runTestSuite(options: TestRunnerOptions): Promise<void> {
  * メイン関数のラッパー
  */
 export function createTestRunner(options: TestRunnerOptions): void {
-  runTestSuite(options)
-    .then(() => {
-      process.exit(0);
-    })
-    .catch((_err) => {
-      process.exit(1);
-    });
+  runTestSuite(options).catch(() => {
+    // エラーは既にrunTestSuite内で処理されている
+  });
 }

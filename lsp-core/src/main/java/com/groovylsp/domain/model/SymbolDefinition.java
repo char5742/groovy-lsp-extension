@@ -33,7 +33,9 @@ public record SymbolDefinition(
     /** パラメータ定義 */
     PARAMETER,
     /** インポート定義 */
-    IMPORT
+    IMPORT,
+    /** 列挙定数定義 */
+    ENUM_CONSTANT
   }
 
   /**

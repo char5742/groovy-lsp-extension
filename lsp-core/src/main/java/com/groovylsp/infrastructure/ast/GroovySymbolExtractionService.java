@@ -8,11 +8,20 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import org.codehaus.groovy.ast.ClassHelper;
 import org.codehaus.groovy.ast.ClassNode;
 import org.codehaus.groovy.ast.FieldNode;
 import org.codehaus.groovy.ast.MethodNode;
 import org.codehaus.groovy.ast.ModuleNode;
 import org.codehaus.groovy.ast.PropertyNode;
+import org.codehaus.groovy.ast.expr.ArgumentListExpression;
+import org.codehaus.groovy.ast.expr.ClassExpression;
+import org.codehaus.groovy.ast.expr.ConstantExpression;
+import org.codehaus.groovy.ast.expr.ConstructorCallExpression;
+import org.codehaus.groovy.ast.expr.Expression;
+import org.codehaus.groovy.ast.expr.ListExpression;
+import org.codehaus.groovy.ast.expr.MapExpression;
+import org.codehaus.groovy.ast.expr.MethodCallExpression;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.SymbolKind;
@@ -171,8 +180,7 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
     String methodName = method.getName();
     return !method.isSynthetic()
         && !methodName.startsWith("$")
-        && !methodName.equals("<init>")
-        && !methodName.equals("<clinit>");
+        && !methodName.equals("<clinit>"); // <init>（コンストラクタ）は含める
   }
 
   /**
@@ -200,7 +208,9 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
             nameEndColumn,
             range);
 
-    String detail = formatTypeDetail(field.getType());
+    // フィールドの型を推論
+    ClassNode fieldType = inferFieldType(field);
+    String detail = formatTypeDetail(fieldType);
 
     return Symbol.create(field.getName(), SymbolKind.Field, range, selectionRange, detail);
   }
@@ -232,7 +242,15 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
             nameEndColumn,
             range);
 
-    String detail = formatTypeDetail(property.getType());
+    // プロパティの基になるフィールドから型を推論
+    ClassNode propertyType;
+    FieldNode field = property.getField();
+    if (field != null) {
+      propertyType = inferFieldType(field);
+    } else {
+      propertyType = property.getType();
+    }
+    String detail = formatTypeDetail(propertyType);
 
     return Symbol.create(property.getName(), SymbolKind.Property, range, selectionRange, detail);
   }
@@ -389,6 +407,99 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
     String typeName = type.getNameWithoutPackage();
     // ジェネリクス対応の場合は将来ここで処理
     return ": " + typeName;
+  }
+
+  /**
+   * フィールドの型を推論
+   *
+   * @param field フィールドノード
+   * @return 推論された型（推論できない場合は宣言された型）
+   */
+  private ClassNode inferFieldType(FieldNode field) {
+    // 明示的に型が宣言されている場合（defやObjectでない場合）はその型を使用
+    ClassNode declaredType = field.getType();
+    if (!field.isDynamicTyped() && !"java.lang.Object".equals(declaredType.getName())) {
+      return declaredType;
+    }
+
+    // 初期化式から型を推論
+    if (field.hasInitialExpression()) {
+      Expression init = field.getInitialExpression();
+      ClassNode inferredType = inferTypeFromExpression(init);
+      if (inferredType != null && !"java.lang.Object".equals(inferredType.getName())) {
+        return inferredType;
+      }
+    }
+
+    // 推論できない場合は宣言された型を返す
+    return declaredType;
+  }
+
+  /**
+   * 式から型を推論
+   *
+   * @param expression 式
+   * @return 推論された型（推論できない場合はnull）
+   */
+  private ClassNode inferTypeFromExpression(Expression expression) {
+    if (expression instanceof ConstructorCallExpression) {
+      // new User(...) の場合、User型を返す
+      var ctorCall = (ConstructorCallExpression) expression;
+      return ctorCall.getType();
+    } else if (expression instanceof ConstantExpression) {
+      // リテラル値から型を推論
+      var constExpr = (ConstantExpression) expression;
+      Object value = constExpr.getValue();
+      if (value instanceof String) {
+        return ClassHelper.STRING_TYPE;
+      } else if (value instanceof Integer) {
+        return ClassHelper.int_TYPE;
+      } else if (value instanceof Long) {
+        return ClassHelper.long_TYPE;
+      } else if (value instanceof Boolean) {
+        return ClassHelper.boolean_TYPE;
+      } else if (value instanceof Double) {
+        return ClassHelper.double_TYPE;
+      } else if (value instanceof Float) {
+        return ClassHelper.float_TYPE;
+      } else if (value instanceof java.math.BigDecimal) {
+        return ClassHelper.make(java.math.BigDecimal.class);
+      }
+    } else if (expression instanceof ListExpression) {
+      // リストリテラル [] はArrayListとして推論
+      return ClassHelper.make(java.util.ArrayList.class);
+    } else if (expression instanceof MapExpression) {
+      // マップリテラル [:] はLinkedHashMapとして推論
+      return ClassHelper.make(java.util.LinkedHashMap.class);
+    } else if (expression instanceof MethodCallExpression) {
+      // SpockのMock/Stub/Spyの処理
+      var methodCall = (MethodCallExpression) expression;
+      String methodName = methodCall.getMethodAsString();
+
+      if ("Mock".equals(methodName) || "Stub".equals(methodName) || "Spy".equals(methodName)) {
+        // Mock(UserService) の引数から型を取得
+        Expression arguments = methodCall.getArguments();
+        if (arguments instanceof ArgumentListExpression) {
+          var argList = (ArgumentListExpression) arguments;
+          if (!argList.getExpressions().isEmpty()) {
+            Expression firstArg = argList.getExpression(0);
+            if (firstArg instanceof ClassExpression) {
+              var classExpr = (ClassExpression) firstArg;
+              return classExpr.getType();
+            } else if (firstArg instanceof org.codehaus.groovy.ast.expr.VariableExpression) {
+              // Mock(UserService)のように、引数が変数として扱われる場合
+              var varExpr = (org.codehaus.groovy.ast.expr.VariableExpression) firstArg;
+              String typeName = varExpr.getName();
+              // 型名から直接ClassNodeを作成
+              return ClassHelper.make(typeName);
+            }
+          }
+        }
+      }
+    }
+
+    // その他の場合は式自体の型を返す
+    return expression.getType();
   }
 
   /**
