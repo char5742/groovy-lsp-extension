@@ -1739,13 +1739,18 @@ public class GroovyTypeInfoService implements TypeInfoService {
       logger.debug("レコードクラス {} のフィールド数: {}", recordNode.getName(), recordNode.getFields().size());
       for (FieldNode field : recordNode.getFields()) {
         logger.debug(
-            "フィールド: {} (static: {}, synthetic: {}, final: {})",
+            "フィールド: {} (static: {}, synthetic: {}, final: {}, type: {})",
             field.getName(),
             field.isStatic(),
             field.isSynthetic(),
-            java.lang.reflect.Modifier.isFinal(field.getModifiers()));
+            java.lang.reflect.Modifier.isFinal(field.getModifiers()),
+            field.getType() != null ? field.getType().getName() : "null");
 
-        if (!field.isStatic() && !field.isSynthetic()) {
+        // レコードクラスのコンポーネントフィールドを判定
+        // staticでなく、finalであり、$で始まらない名前のフィールドを含める
+        if (!field.isStatic()
+            && java.lang.reflect.Modifier.isFinal(field.getModifiers())
+            && !field.getName().startsWith("$")) {
           // レコードクラスのコンポーネントフィールドを含める
           components.add(field);
           logger.debug("レコードコンポーネントとして追加: {}", field.getName());
