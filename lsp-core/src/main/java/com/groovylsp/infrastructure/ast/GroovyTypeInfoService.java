@@ -325,6 +325,15 @@ public class GroovyTypeInfoService implements TypeInfoService {
         return; // 既に見つかっている
       }
 
+      logger.debug(
+          "visitClass: {} at {}:{}, target: {}:{}, hasGenerics: {}",
+          node.getName(),
+          node.getLineNumber(),
+          node.getColumnNumber(),
+          targetPosition.getLine(),
+          targetPosition.getCharacter(),
+          node.getGenericsTypes() != null && node.getGenericsTypes().length > 0);
+
       // クラスのすべてのフィールドの型情報を事前に記録
       // （メソッド内からフィールドを参照する際に必要）
       for (FieldNode field : node.getFields()) {
@@ -378,7 +387,10 @@ public class GroovyTypeInfoService implements TypeInfoService {
         if (withinTypeParam) {
           for (GenericsType generic : generics) {
             logger.debug(
-                "型パラメータ: {}, isPlaceholder: {}", generic.getName(), generic.isPlaceholder());
+                "型パラメータ: {}, isPlaceholder: {}, 上限境界: {}",
+                generic.getName(),
+                generic.isPlaceholder(),
+                generic.getUpperBounds() != null ? generic.getUpperBounds().length : 0);
             if (generic.isPlaceholder()) {
               logger.debug("型パラメータ {} の情報を返します", generic.getName());
               String typeParamDoc = createTypeParameterDocumentation(generic);
@@ -1596,6 +1608,22 @@ public class GroovyTypeInfoService implements TypeInfoService {
     private boolean isRecordClass(ClassNode node) {
       // Groovy 4.0+ のレコードクラスの判定
 
+      // 0. ソースコードからrecordキーワードを確認（最も確実な方法）
+      Option<String> contentOption = documentContentService.getContent(uri);
+      if (contentOption.isDefined()) {
+        String sourceCode = contentOption.get();
+        String[] lines = sourceCode.split("\n");
+
+        // クラス定義の行を確認
+        if (node.getLineNumber() - 1 >= 0 && node.getLineNumber() - 1 < lines.length) {
+          String lineContent = lines[node.getLineNumber() - 1];
+          if (lineContent.trim().startsWith("record ")) {
+            logger.debug("recordキーワードでレコードクラスを検出: {} - '{}'", node.getName(), lineContent.trim());
+            return true;
+          }
+        }
+      }
+
       // 1. isRecord() メソッドがある場合はそれを使用（Groovy 4.0+）
       try {
         // リフレクションを使用してisRecord()メソッドの存在をチェック
@@ -1705,31 +1733,61 @@ public class GroovyTypeInfoService implements TypeInfoService {
       // コンポーネント（コンストラクタのパラメータ）を列挙
       sb.append("**コンポーネント**:\n");
 
-      // レコードクラスのプライマリコンストラクタ（最もパラメータ数が多いもの）を探す
-      MethodNode primaryConstructor = null;
-      int maxParams = 0;
+      // レコードクラスの場合、コンポーネントは通常フィールドとして定義される
+      // まずインスタンスフィールドからコンポーネントを探す
+      List<FieldNode> components = new ArrayList<>();
+      logger.debug("レコードクラス {} のフィールド数: {}", recordNode.getName(), recordNode.getFields().size());
+      for (FieldNode field : recordNode.getFields()) {
+        logger.debug(
+            "フィールド: {} (static: {}, synthetic: {}, final: {})",
+            field.getName(),
+            field.isStatic(),
+            field.isSynthetic(),
+            java.lang.reflect.Modifier.isFinal(field.getModifiers()));
 
-      for (MethodNode constructor : recordNode.getDeclaredConstructors()) {
-        if (!constructor.isSynthetic()) {
-          Parameter[] params = constructor.getParameters();
-          if (params != null && params.length > maxParams) {
-            primaryConstructor = constructor;
-            maxParams = params.length;
-          }
+        if (!field.isStatic() && !field.isSynthetic()) {
+          // レコードクラスのコンポーネントフィールドを含める
+          components.add(field);
+          logger.debug("レコードコンポーネントとして追加: {}", field.getName());
         }
       }
 
-      // プライマリコンストラクタのパラメータを表示
-      if (primaryConstructor != null) {
-        Parameter[] params = primaryConstructor.getParameters();
-        if (params != null) {
-          for (Parameter param : params) {
-            sb.append("- `")
-                .append(param.getName())
-                .append("` : ")
-                .append(formatTypeName(param.getType()))
-                .append("\n");
+      // フィールドが見つからない場合は、最もパラメータ数が多いコンストラクタを使用
+      if (components.isEmpty()) {
+        MethodNode primaryConstructor = null;
+        int maxParams = 0;
+
+        for (MethodNode constructor : recordNode.getDeclaredConstructors()) {
+          if (!constructor.isSynthetic()) {
+            Parameter[] params = constructor.getParameters();
+            if (params != null && params.length > maxParams) {
+              primaryConstructor = constructor;
+              maxParams = params.length;
+            }
           }
+        }
+
+        // プライマリコンストラクタのパラメータを表示
+        if (primaryConstructor != null) {
+          Parameter[] params = primaryConstructor.getParameters();
+          if (params != null) {
+            for (Parameter param : params) {
+              sb.append("- `")
+                  .append(param.getName())
+                  .append("` : ")
+                  .append(formatTypeName(param.getType()))
+                  .append("\n");
+            }
+          }
+        }
+      } else {
+        // フィールドをコンポーネントとして表示
+        for (FieldNode field : components) {
+          sb.append("- `")
+              .append(field.getName())
+              .append("` : ")
+              .append(formatTypeName(field.getType()))
+              .append("\n");
         }
       }
 
@@ -1901,12 +1959,13 @@ public class GroovyTypeInfoService implements TypeInfoService {
 
       // デバッグログ
       logger.debug(
-          "型パラメータ位置チェック: クラス名={}, ノード位置={}:{}, ターゲット位置={}:{}",
+          "型パラメータ位置チェック: クラス名={}, ノード位置={}:{}, ターゲット位置={}:{}, 列情報（1ベース）={}",
           node.getName(),
           node.getLineNumber(),
           node.getColumnNumber(),
           line,
-          column);
+          column,
+          column + 1);
 
       // 型パラメータがあるか確認
       GenericsType[] generics = node.getGenericsTypes();
@@ -1916,6 +1975,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
 
       // 型パラメータはクラス宣言と同じ行にある必要がある
       if (line != node.getLineNumber()) {
+        logger.debug("型パラメータチェック: 行が一致しません（target: {}, node: {}）", line, node.getLineNumber());
         return false;
       }
 
@@ -1927,7 +1987,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
         String sourceCode = contentOption.get();
         String[] lines = sourceCode.split("\n");
 
-        if (line - 1 < lines.length) {
+        if (line - 1 >= 0 && line - 1 < lines.length) {
           String lineContent = lines[line - 1];
           logger.debug("該当行の内容: '{}'", lineContent);
 
@@ -1939,28 +1999,33 @@ public class GroovyTypeInfoService implements TypeInfoService {
             int genericEndIndex = lineContent.indexOf('>', genericStartIndex);
 
             if (genericStartIndex >= 0 && genericEndIndex >= 0) {
-              // VSCodeの位置は0ベース、カラム位置は1ベースに変換されているので調整
-              boolean inRange = column - 1 > genericStartIndex && column - 1 < genericEndIndex;
+              // VSCodeの位置は0ベース
+              boolean inRange = column > genericStartIndex && column < genericEndIndex;
 
               logger.debug(
-                  "型パラメータ範囲: <の位置={}, >の位置={}, カラム位置={}, 範囲内={}",
+                  "型パラメータ範囲: <の位置={}, >の位置={}, カラム位置={}, 範囲内={}, 該当部分: '{}'",
                   genericStartIndex,
                   genericEndIndex,
-                  column - 1,
-                  inRange);
+                  column,
+                  inRange,
+                  lineContent.substring(
+                      genericStartIndex, Math.min(genericEndIndex + 1, lineContent.length())));
 
               return inRange;
+            } else {
+              logger.debug("< または > が見つかりませんでした");
             }
+          } else {
+            logger.debug("クラス名 '{}' が行内で見つかりませんでした", className);
           }
         }
       }
 
       // フォールバック: 推定ベースの判定
       // "class Container<T extends Number>" の場合
-      // - class = 5文字
-      // - スペース = 1文字
+      // - class = 6文字
       // - Container = 9文字
-      // - < = 1文字（位置16）
+      // - < = 1文字（位置15）
 
       int keywordLength = 6; // "class "
       if (node.isInterface()) {
@@ -1971,7 +2036,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
 
       // ノードの列位置は行の先頭（1）を指すことが多い
       int nodeColumn = node.getColumnNumber();
-      int classNameStart = nodeColumn + keywordLength - 1;
+      int classNameStart = nodeColumn - 1 + keywordLength;
       int classNameEnd = classNameStart + className.length();
 
       // < の位置
