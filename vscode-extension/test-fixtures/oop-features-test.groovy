@@ -79,13 +79,13 @@ class OuterClass {
         }
     }
     
-    // メソッド内のローカルクラス
-    def createLocalClass() {
-        class LocalClass {
-            String localField = "local"
-        }
-        return new LocalClass()
-    }
+    // メソッド内のローカルクラス（Groovyではサポートされていないためコメントアウト）
+    // def createLocalClass() {
+    //     class LocalClass {
+    //         String localField = "local"
+    //     }
+    //     return new LocalClass()
+    // }
 }
 
 // 型パラメータ境界
