@@ -43,8 +43,10 @@ import org.codehaus.groovy.ast.expr.MethodCallExpression;
 import org.codehaus.groovy.ast.expr.PropertyExpression;
 import org.codehaus.groovy.ast.expr.VariableExpression;
 import org.codehaus.groovy.ast.stmt.BlockStatement;
+import org.codehaus.groovy.ast.stmt.CaseStatement;
 import org.codehaus.groovy.ast.stmt.ExpressionStatement;
 import org.codehaus.groovy.ast.stmt.Statement;
+import org.codehaus.groovy.ast.stmt.SwitchStatement;
 import org.codehaus.groovy.control.SourceUnit;
 import org.eclipse.lsp4j.Position;
 import org.jspecify.annotations.Nullable;
@@ -774,10 +776,304 @@ public class GroovyTypeInfoService implements TypeInfoService {
       expr.visit(this);
     }
 
+    public void visitSwitchStatement(SwitchStatement switchStatement) {
+      if (foundTypeInfo != null) {
+        return;
+      }
+
+      logger.debug(
+          "visitSwitchStatement at {}:{}",
+          switchStatement.getLineNumber(),
+          switchStatement.getColumnNumber());
+
+      // switch式を訪問
+      Expression switchExpr = switchStatement.getExpression();
+      if (switchExpr != null) {
+        switchExpr.visit(this);
+        if (foundTypeInfo != null) {
+          return;
+        }
+      }
+
+      // 各caseステートメントを訪問
+      for (CaseStatement caseStatement : switchStatement.getCaseStatements()) {
+        caseStatement.visit(this);
+        if (foundTypeInfo != null) {
+          return;
+        }
+      }
+
+      // デフォルトステートメントを訪問
+      Statement defaultStatement = switchStatement.getDefaultStatement();
+      if (defaultStatement != null) {
+        defaultStatement.visit(this);
+      }
+    }
+
+    @Override
+    public void visitCaseStatement(CaseStatement caseStatement) {
+      if (foundTypeInfo != null) {
+        return;
+      }
+
+      logger.debug(
+          "visitCaseStatement at {}:{}",
+          caseStatement.getLineNumber(),
+          caseStatement.getColumnNumber());
+
+      // case式を訪問（パターンマッチングの型チェック処理）
+      Expression caseExpr = caseStatement.getExpression();
+
+      // Groovyのパターンマッチング変数を事前に処理
+      Map<String, ClassNode> patternVars = extractPatternMatchingVariables(caseStatement);
+      patternVars.forEach(
+          (varName, type) -> {
+            variableTypes.put(varName, type);
+            logger.debug("パターンマッチング変数を記録: {} : {}", varName, type.getName());
+          });
+
+      // case式自体を訪問
+      if (caseExpr != null) {
+        // 型パターンマッチングの型名にホバーした場合
+        if (caseExpr instanceof ClassExpression) {
+          var classExpr = (ClassExpression) caseExpr;
+          if (isPositionWithin(classExpr)) {
+            foundTypeInfo = createTypeInfoForClass(classExpr.getType());
+            return;
+          }
+        }
+
+        caseExpr.visit(this);
+        if (foundTypeInfo != null) {
+          return;
+        }
+      }
+
+      // caseブロック内を訪問
+      Statement code = caseStatement.getCode();
+      if (code != null) {
+        code.visit(this);
+      }
+
+      // パターンマッチング変数をスコープから削除（スコープ外になるため）
+      patternVars.keySet().forEach(variableTypes::remove);
+    }
+
+    /**
+     * パターンマッチング変数を抽出
+     *
+     * @param caseStatement caseステートメント
+     * @return 変数名と型のマップ
+     */
+    private Map<String, ClassNode> extractPatternMatchingVariables(CaseStatement caseStatement) {
+      Map<String, ClassNode> patternVars = new HashMap<>();
+
+      Expression caseExpr = caseStatement.getExpression();
+      if (caseExpr instanceof ClassExpression) {
+        // case String s: のような型パターンマッチング
+        var classExpr = (ClassExpression) caseExpr;
+        ClassNode type = classExpr.getType();
+
+        // Groovyでは、パターンマッチング変数は通常caseブロック内で暗黙的に定義される
+        // 変数名は慣習的に型名の小文字から始まる（例: String -> s, Integer -> i）
+        String varName = inferPatternVariableName(type.getNameWithoutPackage());
+
+        // caseブロック内でその変数が実際に使用されているか確認
+        if (isVariableUsedInBlock(caseStatement.getCode(), varName)) {
+          patternVars.put(varName, type);
+        }
+      }
+
+      return patternVars;
+    }
+
+    /**
+     * 型名からパターンマッチング変数名を推測
+     *
+     * @param typeName 型名
+     * @return 推測された変数名
+     */
+    private String inferPatternVariableName(String typeName) {
+      if (typeName == null || typeName.isEmpty()) {
+        return "it";
+      }
+      // 型名の最初の文字を小文字にして返す
+      return Character.toLowerCase(typeName.charAt(0)) + (typeName.length() > 1 ? "" : "");
+    }
+
+    /**
+     * ブロック内で変数が使用されているかチェック
+     *
+     * @param code コードブロック
+     * @param varName 変数名
+     * @return 使用されている場合true
+     */
+    private boolean isVariableUsedInBlock(@Nullable Statement code, String varName) {
+      if (code == null) {
+        return false;
+      }
+
+      // 簡易的な実装: コードブロック内でVariableExpressionを探す
+      var visitor =
+          new ClassCodeVisitorSupport() {
+            boolean found = false;
+
+            @Override
+            protected SourceUnit getSourceUnit() {
+              return null;
+            }
+
+            @Override
+            public void visitVariableExpression(VariableExpression expression) {
+              if (varName.equals(expression.getName())) {
+                found = true;
+              }
+              super.visitVariableExpression(expression);
+            }
+          };
+
+      code.visit(visitor);
+      return visitor.found;
+    }
+
+    /**
+     * クラスノードから型情報を作成
+     *
+     * @param classNode クラスノード
+     * @return 型情報
+     */
+    private TypeInfo createTypeInfoForClass(ClassNode classNode) {
+      String className = classNode.getNameWithoutPackage();
+      String fullName = classNode.getName();
+
+      // クラスとして扱う（インターフェースも含む）
+      TypeInfo.Kind kind = TypeInfo.Kind.CLASS;
+
+      // ドキュメントを生成
+      String documentation = createClassDocumentation(classNode);
+
+      // 修飾子を取得
+      String modifiers = getModifiersString(classNode.getModifiers());
+
+      return new TypeInfo(className, fullName, kind, documentation, modifiers);
+    }
+
+    /**
+     * クラスのドキュメントを生成
+     *
+     * @param classNode クラスノード
+     * @return ドキュメント文字列
+     */
+    private String createClassDocumentation(ClassNode classNode) {
+      var doc = new StringBuilder();
+
+      // クラス名とパッケージ
+      String fullName = classNode.getName();
+      String simpleName = classNode.getNameWithoutPackage();
+      if (!fullName.equals(simpleName)) {
+        // パッケージがある場合
+        String packageName = fullName.substring(0, fullName.length() - simpleName.length() - 1);
+        doc.append("Package: ").append(packageName).append("\n\n");
+      }
+
+      // 継承情報
+      ClassNode superClass = classNode.getSuperClass();
+      if (superClass != null && !superClass.getName().equals("java.lang.Object")) {
+        doc.append("extends ").append(superClass.getNameWithoutPackage()).append("\n");
+      }
+
+      // インターフェース実装
+      ClassNode[] interfaces = classNode.getInterfaces();
+      if (interfaces != null && interfaces.length > 0) {
+        doc.append("implements ");
+        for (int i = 0; i < interfaces.length; i++) {
+          if (i > 0) {
+            doc.append(", ");
+          }
+          doc.append(interfaces[i].getNameWithoutPackage());
+        }
+        doc.append("\n");
+      }
+
+      return doc.toString().trim();
+    }
+
+    /**
+     * デストラクチャリング代入を処理
+     *
+     * @param expression 宣言式
+     */
+    private void handleDestructuringAssignment(DeclarationExpression expression) {
+      var argList = (ArgumentListExpression) expression.getLeftExpression();
+      Expression rightExpression = expression.getRightExpression();
+
+      // 右辺の型を推論
+      ClassNode rightType = null;
+      if (rightExpression instanceof ListExpression) {
+        // リストリテラルの場合
+        rightType = ClassHelper.LIST_TYPE;
+      } else if (rightExpression instanceof VariableExpression) {
+        // 変数参照の場合
+        var varExpr = (VariableExpression) rightExpression;
+        rightType = variableTypes.get(varExpr.getName());
+        if (rightType == null) {
+          rightType = varExpr.getType();
+        }
+      }
+
+      // 各変数を処理
+      List<Expression> expressions = argList.getExpressions();
+      for (int i = 0; i < expressions.size(); i++) {
+        Expression expr = expressions.get(i);
+        if (expr instanceof VariableExpression) {
+          var varExpr = (VariableExpression) expr;
+
+          // 変数の型を推論（リストの場合は要素型、それ以外はObject）
+          ClassNode elementType = ClassHelper.OBJECT_TYPE;
+          if (rightType != null && rightType.isArray()) {
+            elementType = rightType.getComponentType();
+          } else if (rightType != null && rightType.isDerivedFrom(ClassHelper.LIST_TYPE)) {
+            // ジェネリクスから要素型を取得
+            GenericsType[] generics = rightType.getGenericsTypes();
+            if (generics != null && generics.length > 0) {
+              elementType = generics[0].getType();
+            }
+          }
+
+          // 変数の型情報を記録
+          variableTypes.put(varExpr.getName(), elementType);
+
+          // カーソルが変数上にある場合
+          if (isPositionWithin(varExpr)) {
+            foundTypeInfo =
+                new TypeInfo(
+                    varExpr.getName(),
+                    formatTypeName(elementType),
+                    TypeInfo.Kind.LOCAL_VARIABLE,
+                    "デストラクチャリング変数",
+                    null);
+            return;
+          }
+        }
+      }
+
+      // 右辺も訪問
+      if (rightExpression != null && foundTypeInfo == null) {
+        rightExpression.visit(this);
+      }
+    }
+
     @Override
     public void visitDeclarationExpression(DeclarationExpression expression) {
       // 変数宣言の処理
       Expression leftExpression = expression.getLeftExpression();
+
+      // デストラクチャリング（複数代入）の処理
+      if (leftExpression instanceof ArgumentListExpression) {
+        handleDestructuringAssignment(expression);
+        return;
+      }
+
       if (leftExpression instanceof VariableExpression) {
         var varExpr = (VariableExpression) leftExpression;
 
