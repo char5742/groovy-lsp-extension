@@ -90,8 +90,7 @@ pre-push:
     typescript-tests:
       tags: [test, typescript]
       root: "vscode-extension/"
-      use_stdin: true
-      run: npm run test
+      run: ./scripts/run-test-smart.sh
       fail_text: |
         TypeScriptテストが失敗しました。すべてのテストが成功してからプッシュしてください。
         'npm run test' を実行して失敗したテストを確認

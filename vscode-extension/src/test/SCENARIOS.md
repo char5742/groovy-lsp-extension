@@ -2,9 +2,9 @@
 
 ## 概要
 
-- **総テスト数**: 46
+- **総テスト数**: 103
 - **単体テスト**: 12
-- **E2Eテスト**: 34
+- **E2Eテスト**: 91
 
 ## 単体テスト
 
@@ -90,21 +90,122 @@
 - 空のGroovyファイルでも行カウント情報が表示される
 
 ### Document Synchronization Test Suite
-*ファイル: src/test/e2e/document-sync.test.ts*
+*ファイル: src/test/e2e/document-sync.spec.ts*
 
 - Should handle document synchronization
 
 ### Groovyファイル判定の統合テスト
-*ファイル: src/test/e2e/groovy-file-detection.test.ts*
+*ファイル: src/test/e2e/groovy-file-detection.spec.ts*
 
 - Groovyファイルに対してのみ診断が実行される
 - Gradleファイルに対して診断が実行される
 - Gradle Kotlinファイルに対して診断が実行される
 
-### ホバー機能のテスト
+### クロージャ変数itのホバーE2Eテスト
+*ファイル: src/test/e2e/hover-closure-it.spec.ts*
+
+- Integerリストのeachクロージャ内でitがInteger型として表示される
+- Stringリストのeachクロージャ内でitがString型として表示される
+- MapのeachクロージャでitがMap.Entry型として表示される
+- findAllクロージャ内でitが正しい型として表示される
+- カスタムクラスのリストでitが正しい型として表示される
+- ネストされたクロージャで内側のitが正しい型として表示される
+- timesメソッドのクロージャでitがInteger型として表示される
+
+### ホバー機能のE2Eテスト - デストラクチャリング
+*ファイル: src/test/e2e/hover-destructuring.spec.ts*
+
+- 基本的なデストラクチャリング変数aにホバー
+- デストラクチャリング変数bにホバー
+- 使用箇所でのデストラクチャリング変数にホバー
+- 型付きデストラクチャリング変数にホバー
+
+### ホバー機能の詳細なE2Eテスト
+*ファイル: src/test/e2e/hover-detailed.spec.ts*
+
+- メソッド呼び出しの詳細な型情報が表示される
+- 変数参照時に正確な型情報が表示される
+- メソッドチェーンでの型情報が正確に表示される
+- Groovyの動的メソッド呼び出しでも型情報が表示される
+- Mock/Stubオブジェクトの型情報が表示される
+
+### enum関連のホバー機能E2Eテスト
+*ファイル: src/test/e2e/hover-enum.spec.ts*
+
+- enum名にホバーすると列挙子一覧が表示される
+- enum定数にホバーすると型情報が表示される
+- enum型フィールドにホバーすると正しい型が表示される
+- パラメータなしのenum定数も正しく表示される
+- ネストされたenumも正しく認識される
+- switch文内のenum定数も認識される
+
+### オブジェクト指向機能のホバーE2Eテスト
+*ファイル: src/test/e2e/hover-oop.spec.ts*
+
+- レコードクラスにホバーするとコンポーネント一覧が表示される
+- ネストクラスにホバーすると完全修飾名が表示される
+- オーバーライドされたメソッドにホバーすると@Overrideと親メソッド情報が表示される [Override]
+- 型パラメータ境界にホバーすると上限型が表示される
+- オーバーロードされたメソッド呼び出しで正しいオーバーロードが特定される
+- 静的ネストクラスへのアクセスも正しく認識される
+- @Canonicalアノテーション付きクラスも正しく認識される [Canonical]
+
+### ホバー機能のE2Eテスト - パターンマッチング
+*ファイル: src/test/e2e/hover-pattern-match.spec.ts*
+
+- 型パターンマッチングの型名にホバー
+- パターンマッチング変数にホバー
+
+### ホバー機能のE2Eテスト - スコープシャドウイング
+*ファイル: src/test/e2e/hover-scope-shadow.spec.ts*
+
+- クラスレベルの変数nameにホバー
+- メソッドレベルでシャドウされた変数nameにホバー
+- ブロック内でさらにシャドウされた変数nameにホバー
+- クロージャ内でシャドウされた変数にホバー
+- thisを使ったインスタンスフィールドアクセスにホバー
+
+### ホバー機能のE2Eテスト - シンプルパターンマッチング
+*ファイル: src/test/e2e/hover-simple-pattern.spec.ts*
+
+- クラス名にホバーできることを確認
+- case String s: の解析を確認
+
+### ホバー機能のE2Eテスト - 標準Groovyパターン
+*ファイル: src/test/e2e/hover-standard-pattern.spec.ts*
+
+- 標準的なcase String:の型名にホバー
+- switch内のitem変数にホバー
+- instanceof後のキャスト変数にホバー
+
+### 静的メソッドとqualified呼び出しのホバーE2Eテスト
+*ファイル: src/test/e2e/hover-static-method.spec.ts*
+
+- qualified呼び出し（java.time.Instant.now()）でFQN付きシグネチャが表示される
+- 静的メソッドアクセス（Math.sin(x)）でメソッド情報が表示される
+- インポートされたクラスの静的メソッド（Instant.now()）でも情報が表示される
+- 静的フィールド（Math.PI）でフィールド情報が表示される
+- import aliasを使用した呼び出し（LD.now()）で元のクラス情報が表示される
+- import alias自体（LD）にホバーすると元のクラス名が表示される
+
+### ホバー機能の型推論E2Eテスト
+*ファイル: src/test/e2e/hover-type-inference.spec.ts*
+
+- defで宣言されたフィールドの型が初期化式から推論される
+- Spockのモック生成メソッドから型が推論される
+- メソッド内からフィールドを参照する際も型推論が適用される
+- 明示的に型が宣言されたフィールドはその型を維持する
+
+### ホバー機能のE2Eテスト
 *ファイル: src/test/e2e/hover.spec.ts*
 
-- ホバー時にGroovy要素の情報が表示される
-- メソッド上でもホバー情報が表示される
-- 変数上でもホバー情報が表示される
+- クラス名にホバーした際に型情報が表示される
+- メソッド名にホバーした際にシグネチャが表示される
+- プロパティにホバーした際に型情報が表示される
+- フィールドにホバーした際に情報が表示される
+- コンストラクタにホバーした際に情報が表示される
+- ローカル変数にホバーした際に型情報が表示される
+- パラメータにホバーした際に型情報が表示される
+- 型名（Long）にホバーした際に情報が表示される
+- メソッド呼び出しにホバーした際に情報が表示される
 

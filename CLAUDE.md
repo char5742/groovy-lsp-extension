@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Groovy LSP ExtensionはGroovy言語のLanguage Server Protocol (LSP)実装で、特にSpockテストフレームワークのサポートに重点を置いています。モノレポ構成でLSPコア（Java）とVSCode拡張機能（TypeScript）を含みます。
 
+現在はPhase 4（情報提供機能）のホバー機能改善に取り組んでいます。詳細な開発計画はMILESTONES.mdを参照してください。
+
 ## アーキテクチャ
 
 ### LSPコア（Java）
@@ -36,7 +38,7 @@ cd lsp-core
 ./gradlew jacocoTestReport   # カバレッジレポート生成
 ./gradlew check              # 全静的解析実行
 ./gradlew spotlessApply      # コード自動フォーマット
-./gradlew shadowJar          # 実行可能JARビルド
+./gradlew shadowJar          # 実行可能JARビルド（build/libs/lsp-core-*-all.jarを生成）
 ./gradlew run                # LSPサーバーを標準I/Oモードで起動
 ```
 
@@ -47,8 +49,7 @@ npm install                  # 依存関係インストール
 npm run compile              # TypeScriptビルド
 npm run watch                # 変更を監視して再コンパイル
 npm run test                 # テスト実行（e2eテスト）
-npm run test -- --grep "test name"  # 単一テスト実行
-npm run test:grep            # GREP環境変数で特定のテストを実行（例: GREP="括弧" npm run test:grep）
+npm run test:grep            # 特定(単体)のテストを実行（例: GREP="括弧" npm run test:grep）
 npm run coverage             # カバレッジレポート生成
 npm run lint                 # Biomeチェック実行
 npm run lint:fix             # Biome自動修正
@@ -122,7 +123,11 @@ vscode-extension/
 
 - **警告抑制**: @SuppressWarningsは極力使用しないでください
 - **Gitフック**: Lefthookによる自動チェック（--no-verify禁止）
+  - pre-commit: 静的解析、フォーマット、テスト実行
+  - pre-push: テストシナリオ自動生成
 - **静的解析エラー**: Error ProneとNullAwayのエラーは必ず修正
+- **TypeScript設定**: tsconfig.jsonでstrictモード有効（ES2022ターゲット）
+- **言語設定**: .github/copilot-instructions.mdに従い日本語を使用
 
 ## ツール関連
 
@@ -137,6 +142,11 @@ vscode-extension/
 ## 外部ツール設定
 
 - **Biome**: biome-ignoreを禁止します
+  - フォーマット: プリントサイズ120、インデント幅2（タブではなくスペース）
+  - リンター: 推奨ルールセット使用
+- **カバレッジツール**: 
+  - Java側: JaCoCo（HTML/XMLレポート生成）
+  - TypeScript側: C8（c8レポートはcoverageディレクトリに出力）
 
 ## デバッグ・トラブルシューティング
 
@@ -166,3 +176,10 @@ vscode-extension/
 ## Null安全性について
 
 本プロジェクトはデフォルトNonNullです。nullに対して意識する必要はないため、nullチェックやnullに関するテストを書かないようにしてください。
+
+## デバッグ用ログファイル
+
+開発中に以下のログファイルが生成されます：
+- `test-output.log`: テスト実行時の標準出力
+- `test-hover-debug.log`: ホバー機能のデバッグログ
+- VSCode拡張機能ログ: 出力パネルの「Groovy Language Server」から確認可能

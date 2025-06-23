@@ -21,7 +21,7 @@ describe('Groovyファイル判定の統合テスト', () => {
 
   it('Groovyファイルに対してのみ診断が実行される', async () => {
     // Groovyファイルを開く
-    const groovyPath = join(__dirname, '../../../test-fixtures/Test.groovy');
+    const groovyPath = join(__dirname, '../../../test-fixtures/example.groovy');
     const groovyDoc = await workspace.openTextDocument(groovyPath);
     await window.showTextDocument(groovyDoc);
 
