@@ -6,6 +6,7 @@ import com.groovylsp.infrastructure.parser.GroovyAstParser;
 import io.vavr.control.Either;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import org.codehaus.groovy.ast.ClassHelper;
@@ -43,6 +44,9 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
   private static final int DEFAULT_SYMBOL_NAME_LENGTH = 10;
 
   private final GroovyAstParser parser;
+
+  /** クラス名解決結果のキャッシュ（パフォーマンス改善のため） */
+  private final ConcurrentHashMap<String, Boolean> classExistenceCache = new ConcurrentHashMap<>();
 
   @Inject
   public GroovySymbolExtractionService(GroovyAstParser parser) {
@@ -571,12 +575,8 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
       String packageName = starImport.getPackageName();
       if (packageName != null) {
         String fullClassName = packageName + "." + className;
-        try {
-          // クラスが実際に存在するか確認
-          Class.forName(fullClassName);
+        if (isClassExists(fullClassName)) {
           return ClassHelper.make(fullClassName);
-        } catch (ClassNotFoundException e) {
-          // このパッケージには存在しない
         }
       }
     }
@@ -585,14 +585,30 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
     String[] defaultPackages = {"java.lang", "groovy.lang"};
     for (String pkg : defaultPackages) {
       String fullClassName = pkg + "." + className;
-      try {
-        Class.forName(fullClassName);
+      if (isClassExists(fullClassName)) {
         return ClassHelper.make(fullClassName);
-      } catch (ClassNotFoundException e) {
-        // このパッケージには存在しない
       }
     }
 
     return null;
+  }
+
+  /**
+   * クラスが存在するかどうかをキャッシュ付きで確認
+   *
+   * @param fullClassName 完全修飾クラス名
+   * @return クラスが存在する場合true
+   */
+  private boolean isClassExists(String fullClassName) {
+    return classExistenceCache.computeIfAbsent(
+        fullClassName,
+        className -> {
+          try {
+            Class.forName(className);
+            return true;
+          } catch (ClassNotFoundException e) {
+            return false;
+          }
+        });
   }
 }

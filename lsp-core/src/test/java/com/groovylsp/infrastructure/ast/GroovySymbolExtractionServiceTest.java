@@ -549,4 +549,176 @@ class GroovySymbolExtractionServiceTest {
               });
     }
   }
+
+  @Nested
+  @DisplayName("クラス解決キャッシュ機能")
+  class ClassResolutionCache {
+
+    @Test
+    @DisplayName("複数のスターインポートでのクラス解決でキャッシュが効く")
+    void cacheWorksForStarImports() {
+      // given
+      String sourceCode =
+          """
+          import java.util.*
+          import java.nio.file.*
+
+          class ImportTest {
+              def list1 = Mock(List)
+              def list2 = Mock(List)  // 同じクラス名の2回目
+              def map1 = Mock(Map)
+              def map2 = Mock(Map)    // 同じクラス名の2回目
+              def path1 = Mock(Path)
+              def path2 = Mock(Path)  // 同じクラス名の2回目
+          }
+          """;
+
+      // when
+      Either<String, List<Symbol>> result =
+          service.extractSymbols("file:///test/ImportTest.groovy", sourceCode);
+
+      // then
+      assertThat(result.isRight()).isTrue();
+      List<Symbol> symbols = result.get();
+      assertThat(symbols).hasSize(1);
+
+      Symbol classSymbol = symbols.get(0);
+      assertThat(classSymbol.name()).isEqualTo("ImportTest");
+
+      // 各フィールドが正しく解決されているか確認（キャッシュが効いていても結果は同じ）
+      assertThat(classSymbol.children())
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("list1");
+                assertThat(field.detail()).isEqualTo(": List");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("list2");
+                assertThat(field.detail()).isEqualTo(": List");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("map1");
+                assertThat(field.detail()).isEqualTo(": Map");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("map2");
+                assertThat(field.detail()).isEqualTo(": Map");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("path1");
+                assertThat(field.detail()).isEqualTo(": Path");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("path2");
+                assertThat(field.detail()).isEqualTo(": Path");
+              });
+    }
+
+    @Test
+    @DisplayName("デフォルトパッケージのクラス解決でキャッシュが効く")
+    void cacheWorksForDefaultPackages() {
+      // given
+      String sourceCode =
+          """
+          class DefaultPackageTest {
+              def str1 = Mock(String)
+              def str2 = Mock(String)     // 同じクラス名の2回目（java.lang.String）
+              def obj1 = Mock(Object)
+              def obj2 = Mock(Object)     // 同じクラス名の2回目（java.lang.Object）
+          }
+          """;
+
+      // when
+      Either<String, List<Symbol>> result =
+          service.extractSymbols("file:///test/DefaultPackageTest.groovy", sourceCode);
+
+      // then
+      assertThat(result.isRight()).isTrue();
+      List<Symbol> symbols = result.get();
+      assertThat(symbols).hasSize(1);
+
+      Symbol classSymbol = symbols.get(0);
+      assertThat(classSymbol.name()).isEqualTo("DefaultPackageTest");
+
+      // 各フィールドが正しく解決されているか確認
+      assertThat(classSymbol.children())
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("str1");
+                assertThat(field.detail()).isEqualTo(": String");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("str2");
+                assertThat(field.detail()).isEqualTo(": String");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("obj1");
+                assertThat(field.detail()).isEqualTo(": Object");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("obj2");
+                assertThat(field.detail()).isEqualTo(": Object");
+              });
+    }
+
+    @Test
+    @DisplayName("存在しないクラス名の解決も適切にキャッシュされる")
+    void cacheWorksForNonExistentClasses() {
+      // given
+      String sourceCode =
+          """
+          import java.util.*
+
+          class NonExistentClassTest {
+              def unknown1 = Mock(NonExistentClass)
+              def unknown2 = Mock(NonExistentClass)  // 同じ存在しないクラス名の2回目
+              def another1 = Mock(AnotherMissingClass)
+              def another2 = Mock(AnotherMissingClass)  // 同じ存在しないクラス名の2回目
+          }
+          """;
+
+      // when
+      Either<String, List<Symbol>> result =
+          service.extractSymbols("file:///test/NonExistentClassTest.groovy", sourceCode);
+
+      // then
+      assertThat(result.isRight()).isTrue();
+      List<Symbol> symbols = result.get();
+      assertThat(symbols).hasSize(1);
+
+      Symbol classSymbol = symbols.get(0);
+      assertThat(classSymbol.name()).isEqualTo("NonExistentClassTest");
+
+      // 存在しないクラス名でも、フォールバック処理により ClassNode が作成されるはず
+      assertThat(classSymbol.children())
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("unknown1");
+                assertThat(field.detail()).isEqualTo(": NonExistentClass");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("unknown2");
+                assertThat(field.detail()).isEqualTo(": NonExistentClass");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("another1");
+                assertThat(field.detail()).isEqualTo(": AnotherMissingClass");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("another2");
+                assertThat(field.detail()).isEqualTo(": AnotherMissingClass");
+              });
+    }
+  }
 }
