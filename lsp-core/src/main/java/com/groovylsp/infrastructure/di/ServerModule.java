@@ -10,12 +10,14 @@ import com.groovylsp.domain.repository.TextDocumentRepository;
 import com.groovylsp.domain.service.AstAnalysisService;
 import com.groovylsp.domain.service.BracketValidationService;
 import com.groovylsp.domain.service.DefinitionFinderService;
+import com.groovylsp.domain.service.JavaDocService;
 import com.groovylsp.domain.service.LineCountService;
 import com.groovylsp.domain.service.SymbolExtractionService;
 import com.groovylsp.domain.service.SymbolTableBuilderService;
 import com.groovylsp.domain.service.TypeInfoService;
 import com.groovylsp.infrastructure.ast.GroovySymbolExtractionService;
 import com.groovylsp.infrastructure.ast.GroovyTypeInfoService;
+import com.groovylsp.infrastructure.javadoc.BasicJavaDocService;
 import com.groovylsp.infrastructure.parser.DocumentContentService;
 import com.groovylsp.infrastructure.parser.GroovyAstParser;
 import com.groovylsp.infrastructure.repository.InMemoryTextDocumentRepository;
@@ -69,14 +71,26 @@ public class ServerModule {
 
   @Provides
   @Singleton
+  public JavaDocService provideJavaDocService() {
+    return new BasicJavaDocService();
+  }
+
+  @Provides
+  @Singleton
   public TypeInfoService provideTypeInfoService(
       GroovyAstParser parser,
       SymbolTable symbolTable,
       ScopeManager scopeManager,
       DocumentContentService documentContentService,
-      AstAnalysisService astAnalysisService) {
+      AstAnalysisService astAnalysisService,
+      JavaDocService javaDocService) {
     return new GroovyTypeInfoService(
-        parser, symbolTable, scopeManager, documentContentService, astAnalysisService);
+        parser,
+        symbolTable,
+        scopeManager,
+        documentContentService,
+        astAnalysisService,
+        javaDocService);
   }
 
   @Provides
