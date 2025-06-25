@@ -7,6 +7,7 @@ import com.groovylsp.domain.model.ScopeManager;
 import com.groovylsp.domain.model.SymbolDefinition;
 import com.groovylsp.domain.model.SymbolTable;
 import com.groovylsp.domain.service.AstAnalysisService;
+import com.groovylsp.domain.service.JavaDocService;
 import com.groovylsp.domain.service.TypeInfoService;
 import com.groovylsp.infrastructure.parser.DocumentContentService;
 import com.groovylsp.infrastructure.parser.GroovyAstParser;
@@ -17,9 +18,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import org.codehaus.groovy.ast.ASTNode;
+import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.ClassCodeVisitorSupport;
 import org.codehaus.groovy.ast.ClassHelper;
 import org.codehaus.groovy.ast.ClassNode;
@@ -68,6 +72,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
   private final ScopeManager scopeManager;
   private final DocumentContentService documentContentService;
   private final AstAnalysisService astAnalysisService;
+  private final JavaDocService javaDocService;
 
   @Inject
   public GroovyTypeInfoService(
@@ -75,12 +80,14 @@ public class GroovyTypeInfoService implements TypeInfoService {
       SymbolTable symbolTable,
       ScopeManager scopeManager,
       DocumentContentService documentContentService,
-      AstAnalysisService astAnalysisService) {
+      AstAnalysisService astAnalysisService,
+      JavaDocService javaDocService) {
     this.parser = parser;
     this.symbolTable = symbolTable;
     this.scopeManager = scopeManager;
     this.documentContentService = documentContentService;
     this.astAnalysisService = astAnalysisService;
+    this.javaDocService = javaDocService;
   }
 
   @Override
@@ -479,20 +486,29 @@ public class GroovyTypeInfoService implements TypeInfoService {
                   getModifiersString(node.getModifiers()));
         } else {
           // 通常のクラス
-          String documentation = null;
-
-          // ネストクラスの場合は完全修飾名を含める
-          if (node.getOuterClass() != null) {
-            documentation = createNestedClassDocumentation(node);
-          }
-
+          // ドキュメンテーション抽出を使用してTypeInfoを作成
           foundTypeInfo =
-              new TypeInfo(
+              createTypeInfoWithDocumentation(
                   node.getName(),
                   getFullyQualifiedClassName(node),
                   TypeInfo.Kind.CLASS,
-                  documentation,
+                  node,
                   getModifiersString(node.getModifiers()));
+
+          // ネストクラスの場合は追加情報を含める
+          if (node.getOuterClass() != null) {
+            String existingDoc = foundTypeInfo.documentation();
+            String nestedDoc = createNestedClassDocumentation(node);
+            String combinedDoc =
+                existingDoc.equals("ドキュメントがありません") ? nestedDoc : existingDoc + "\n\n" + nestedDoc;
+            foundTypeInfo =
+                new TypeInfo(
+                    foundTypeInfo.name(),
+                    foundTypeInfo.type(),
+                    foundTypeInfo.kind(),
+                    combinedDoc,
+                    foundTypeInfo.modifiers());
+          }
         }
       }
     }
@@ -569,12 +585,13 @@ public class GroovyTypeInfoService implements TypeInfoService {
           // フィールドの型を推論（defで宣言された場合の初期化式を考慮）
           ClassNode fieldType = inferFieldType(node);
 
+          // ドキュメンテーション抽出を使用してTypeInfoを作成
           foundTypeInfo =
-              new TypeInfo(
+              createTypeInfoWithDocumentation(
                   node.getName(),
                   formatTypeName(fieldType),
                   TypeInfo.Kind.FIELD,
-                  null,
+                  node,
                   getModifiersString(node.getModifiers()));
         }
       }
@@ -662,22 +679,34 @@ public class GroovyTypeInfoService implements TypeInfoService {
                     getModifiersString(node.getModifiers()));
           }
         } else if (isPositionWithinMethodName(node)) {
-          // オーバーライドメソッドの場合は特別な処理
-          String documentation = null;
           String signature = formatMethodSignature(node);
 
-          if (hasOverrideAnnotation(node)) {
-            logger.debug("@Overrideアノテーション付きメソッドを検出: {}", node.getName());
-            documentation = createOverrideMethodDocumentation(node);
-          }
-
+          // ドキュメンテーション抽出を使用してTypeInfoを作成
           foundTypeInfo =
-              new TypeInfo(
+              createTypeInfoWithDocumentation(
                   node.getName(),
                   signature,
                   TypeInfo.Kind.METHOD,
-                  documentation,
+                  node,
                   getModifiersString(node.getModifiers()));
+
+          // オーバーライドメソッドの場合は追加情報を含める
+          if (hasOverrideAnnotation(node)) {
+            logger.debug("@Overrideアノテーション付きメソッドを検出: {}", node.getName());
+            String existingDoc = foundTypeInfo.documentation();
+            String overrideDoc = createOverrideMethodDocumentation(node);
+            String combinedDoc =
+                existingDoc.equals("ドキュメントがありません")
+                    ? overrideDoc
+                    : existingDoc + "\n\n" + overrideDoc;
+            foundTypeInfo =
+                new TypeInfo(
+                    foundTypeInfo.name(),
+                    foundTypeInfo.type(),
+                    foundTypeInfo.kind(),
+                    combinedDoc,
+                    foundTypeInfo.modifiers());
+          }
         }
       }
     }
@@ -1329,19 +1358,43 @@ public class GroovyTypeInfoService implements TypeInfoService {
           if (symbolOption.isDefined()) {
             foundTypeInfo = createTypeInfoFromSymbol(symbolOption.get());
           } else {
-            // メソッド呼び出しとして扱う（改善版：FQN情報を含める）
+            // メソッド呼び出しとして扱う（改善版：FQN情報とJavaDocを含める）
             String signature;
             String documentation = null;
 
             if (isQualifiedCall && receiverTypeName != null) {
               // qualified呼び出しの場合はFQNを含める
               signature = receiverTypeName + "." + methodName + "(...)";
-              documentation = "**完全修飾メソッド呼び出し**\n\n" + "クラス: " + receiverTypeName;
+
+              // Javaクラスの場合はJavaDocを取得
+              if (isJavaClass(receiverTypeName)) {
+                var javaDocInfo =
+                    javaDocService.getMethodDocumentation(receiverTypeName, methodName, null);
+                if (javaDocInfo.isDefined()) {
+                  documentation = javaDocInfo.get().toMarkdown();
+                } else {
+                  documentation = "**完全修飾メソッド呼び出し**\n\n" + "クラス: " + receiverTypeName;
+                }
+              } else {
+                documentation = "**完全修飾メソッド呼び出し**\n\n" + "クラス: " + receiverTypeName;
+              }
             } else if (receiverTypeName != null) {
               // 通常のメソッド呼び出し
               String simpleClassName = getSimpleClassName(receiverTypeName);
               signature = simpleClassName + "." + methodName + "(...)";
-              documentation = "**メソッド呼び出し**\n\n" + "クラス: " + receiverTypeName;
+
+              // Javaクラスの場合はJavaDocを取得
+              if (isJavaClass(receiverTypeName)) {
+                var javaDocInfo =
+                    javaDocService.getMethodDocumentation(receiverTypeName, methodName, null);
+                if (javaDocInfo.isDefined()) {
+                  documentation = javaDocInfo.get().toMarkdown();
+                } else {
+                  documentation = "**メソッド呼び出し**\n\n" + "クラス: " + receiverTypeName;
+                }
+              } else {
+                documentation = "**メソッド呼び出し**\n\n" + "クラス: " + receiverTypeName;
+              }
             } else {
               signature = methodName + "(...)";
             }
@@ -2659,6 +2712,438 @@ public class GroovyTypeInfoService implements TypeInfoService {
 
       // デバッグ用: Integerを返す（テスト用）
       return ClassHelper.make(Integer.class);
+    }
+
+    /**
+     * ノードからJavaDoc/GroovyDocコメントを抽出
+     *
+     * @param node AnnotatedNode（ClassNode、MethodNode、FieldNodeなど）
+     * @return ドキュメントコメント、見つからない場合はnull
+     */
+    private @Nullable String extractDocumentation(AnnotatedNode node) {
+      if (node == null) {
+        return null;
+      }
+
+      // まずGroovyのgetGroovydocメソッドを試す
+      try {
+        String docComment = node.getGroovydoc() != null ? node.getGroovydoc().getContent() : null;
+
+        if (docComment != null && !docComment.trim().isEmpty()) {
+          return processDocComment(docComment);
+        }
+      } catch (Exception e) {
+        logger.debug("getGroovydoc()からのドキュメント取得に失敗: {}", e.getMessage());
+      }
+
+      // Groovydocメソッドでドキュメントが取得できない場合、ソースコードから直接抽出
+      return extractDocumentationFromSource(node);
+    }
+
+    /**
+     * ソースコードから直接ドキュメントコメントを抽出
+     *
+     * @param node AnnotatedNode
+     * @return ドキュメントコメント、見つからない場合はnull
+     */
+    private @Nullable String extractDocumentationFromSource(AnnotatedNode node) {
+      if (node == null) {
+        return null;
+      }
+
+      try {
+        // ソースコードを取得
+        Option<String> contentOption = documentContentService.getContent(uri);
+        if (!contentOption.isDefined()) {
+          return null;
+        }
+
+        String sourceCode = contentOption.get();
+        String[] lines = sourceCode.split("\n");
+
+        // ノードの行番号（1ベース）を取得
+        int nodeLineNumber = node.getLineNumber();
+        if (nodeLineNumber <= 0 || nodeLineNumber > lines.length) {
+          return null;
+        }
+
+        // ノードの前の行からドキュメントコメントを探す
+        // /** から */ までのコメントブロックを検索
+        var docComment = new StringBuilder();
+        boolean inDocComment = false;
+        boolean foundDocComment = false;
+
+        // ノードの行より前から遡って検索
+        for (int i = nodeLineNumber - 2;
+            i >= 0;
+            i--) { // -2 because arrays are 0-based and we want line before node
+          String line = lines[i].trim();
+
+          if (line.endsWith("*/")) {
+            // ドキュメントコメントの終了
+            if (line.startsWith("/**") && line.length() > 5) {
+              // 単行のドキュメントコメント /** comment */
+              String singleLineDoc = line.substring(3, line.length() - 2).trim();
+              return processDocComment("/**\n" + singleLineDoc + "\n*/");
+            } else if (line.equals("*/") || line.startsWith("*/")) {
+              // 複数行ドキュメントコメントの終了行
+              inDocComment = true;
+              if (!line.equals("*/")) {
+                // */ の前にコンテンツがある場合
+                String content = line.substring(0, line.length() - 2).trim();
+                if (content.startsWith("*")) {
+                  content = content.substring(1).trim();
+                }
+                docComment.insert(0, content + "\n");
+              }
+              continue;
+            }
+          }
+
+          if (inDocComment) {
+            if (line.startsWith("/**")) {
+              // ドキュメントコメントの開始
+              foundDocComment = true;
+              // /** の後にコンテンツがある場合
+              if (line.length() > 3) {
+                String content = line.substring(3).trim();
+                if (content.startsWith("*")) {
+                  content = content.substring(1).trim();
+                }
+                if (!content.isEmpty()) {
+                  docComment.insert(0, content + "\n");
+                }
+              }
+              break;
+            } else if (line.startsWith("*")) {
+              // ドキュメントコメントの中間行
+              String content = line.substring(1).trim();
+              docComment.insert(0, content + "\n");
+            } else if (line.isEmpty()) {
+              // 空行はスキップ
+              docComment.insert(0, "\n");
+            } else {
+              // ドキュメントコメント以外の行に到達したので終了
+              break;
+            }
+          } else if (line.isEmpty() || line.startsWith("//")) {
+            // 通常のコメントや空行はスキップして続行
+            continue;
+          } else if (line.contains("@")
+              && (line.contains("Override")
+                  || line.contains("Deprecated")
+                  || line.contains("SuppressWarnings")
+                  || line.contains("Nullable")
+                  || line.contains("NotNull"))) {
+            // アノテーション行はスキップして続行
+            continue;
+          } else {
+            // その他のコード行に到達したので、ドキュメントコメントは存在しない
+            break;
+          }
+        }
+
+        if (foundDocComment && docComment.length() > 0) {
+          String fullDocComment = "/**\n" + docComment.toString() + "*/";
+          return processDocComment(fullDocComment);
+        }
+
+      } catch (Exception e) {
+        logger.debug("ソースからのドキュメント抽出中にエラー: {}", e.getMessage());
+      }
+
+      return null;
+    }
+
+    /**
+     * ドキュメントコメントを処理してMarkdown形式に変換
+     *
+     * @param docComment 生のドキュメントコメント
+     * @return 処理されたマークダウン形式のドキュメント
+     */
+    private String processDocComment(String docComment) {
+      if (docComment == null || docComment.trim().isEmpty()) {
+        return "";
+      }
+
+      // /** と */ を削除
+      String cleaned = docComment.replaceAll("^/\\*\\*", "").replaceAll("\\*/$", "");
+
+      // 各行の先頭の * を削除
+      String[] lines = cleaned.split("\n");
+      var sb = new StringBuilder();
+
+      for (String line : lines) {
+        String trimmed = line.trim();
+        if (trimmed.startsWith("*")) {
+          trimmed = trimmed.substring(1).trim();
+        }
+        sb.append(trimmed).append("\n");
+      }
+
+      String content = sb.toString().trim();
+
+      // JavaDocタグを処理
+      return processJavaDocTags(content);
+    }
+
+    /**
+     * JavaDocタグ（@param、@return、@throws等）を処理
+     *
+     * @param content ドキュメントコンテンツ
+     * @return 処理されたマークダウン形式のドキュメント
+     */
+    private String processJavaDocTags(String content) {
+      var sb = new StringBuilder();
+      String[] lines = content.split("\n");
+
+      var description = new StringBuilder();
+      var params = new StringBuilder();
+      var returns = new StringBuilder();
+      var throwsDoc = new StringBuilder();
+      var deprecated = new StringBuilder();
+      var since = new StringBuilder();
+      var see = new StringBuilder();
+
+      String currentSection = "description";
+
+      for (String line : lines) {
+        String trimmed = line.trim();
+
+        if (trimmed.startsWith("@param")) {
+          currentSection = "param";
+          String paramInfo = trimmed.substring(6).trim();
+          if (params.length() == 0) {
+            params.append("\n**パラメータ**:\n");
+          }
+          // @param paramName description の形式を解析
+          String[] parts = paramInfo.split("\\s+", 2);
+          if (parts.length >= 1) {
+            params.append("- `").append(parts[0]).append("`");
+            if (parts.length > 1) {
+              params.append(": ").append(parts[1]);
+            }
+            params.append("\n");
+          }
+        } else if (trimmed.startsWith("@return")) {
+          currentSection = "return";
+          String returnInfo = trimmed.substring(7).trim();
+          returns.append("\n**戻り値**: ").append(returnInfo).append("\n");
+        } else if (trimmed.startsWith("@throws") || trimmed.startsWith("@exception")) {
+          currentSection = "throws";
+          String throwsInfo =
+              trimmed.startsWith("@throws")
+                  ? trimmed.substring(7).trim()
+                  : trimmed.substring(10).trim();
+          if (throwsDoc.length() == 0) {
+            throwsDoc.append("\n**例外**:\n");
+          }
+          // @throws ExceptionClass description の形式を解析
+          String[] parts = throwsInfo.split("\\s+", 2);
+          if (parts.length >= 1) {
+            throwsDoc.append("- `").append(parts[0]).append("`");
+            if (parts.length > 1) {
+              throwsDoc.append(": ").append(parts[1]);
+            }
+            throwsDoc.append("\n");
+          }
+        } else if (trimmed.startsWith("@deprecated")) {
+          currentSection = "deprecated";
+          String deprecatedInfo = trimmed.substring(11).trim();
+          deprecated.append("\n**⚠️ 非推奨**: ").append(deprecatedInfo).append("\n");
+        } else if (trimmed.startsWith("@since")) {
+          currentSection = "since";
+          String sinceInfo = trimmed.substring(6).trim();
+          since.append("\n**バージョン**: ").append(sinceInfo).append("\n");
+        } else if (trimmed.startsWith("@see")) {
+          currentSection = "see";
+          String seeInfo = trimmed.substring(4).trim();
+          if (see.length() == 0) {
+            see.append("\n**関連項目**:\n");
+          }
+          see.append("- ").append(processSeeTag(seeInfo)).append("\n");
+        } else if (trimmed.startsWith("@")) {
+          // その他のタグは無視
+          currentSection = "other";
+        } else if (!trimmed.isEmpty()) {
+          // 継続行の処理
+          switch (currentSection) {
+            case "description":
+              description.append(line).append("\n");
+              break;
+            case "param":
+              if (params.length() > 0) {
+                // 前のパラメータに継続行を追加
+                params.append("  ").append(trimmed).append("\n");
+              }
+              break;
+            case "return":
+              returns.append(" ").append(trimmed);
+              break;
+            case "throws":
+              if (throwsDoc.length() > 0) {
+                throwsDoc.append("  ").append(trimmed).append("\n");
+              }
+              break;
+            case "deprecated":
+              deprecated.append(" ").append(trimmed);
+              break;
+            case "since":
+              since.append(" ").append(trimmed);
+              break;
+            case "see":
+              if (see.length() > 0) {
+                see.append("  ").append(trimmed).append("\n");
+              }
+              break;
+            default: // fall out
+          }
+        }
+      }
+
+      // 結果を組み合わせ
+      if (description.length() > 0) {
+        sb.append(description.toString().trim()).append("\n");
+      }
+
+      if (deprecated.length() > 0) {
+        sb.append(deprecated);
+      }
+
+      if (params.length() > 0) {
+        sb.append(params);
+      }
+
+      if (returns.length() > 0) {
+        sb.append(returns);
+      }
+
+      if (throwsDoc.length() > 0) {
+        sb.append(throwsDoc);
+      }
+
+      if (since.length() > 0) {
+        sb.append(since);
+      }
+
+      if (see.length() > 0) {
+        sb.append(see);
+      }
+
+      // {@link} タグを処理
+      return processInlineTags(sb.toString().trim());
+    }
+
+    /**
+     * seeタグを処理
+     *
+     * @param seeContent seeタグの内容
+     * @return 処理されたリンク形式
+     */
+    private String processSeeTag(String seeContent) {
+      if (seeContent == null || seeContent.trim().isEmpty()) {
+        return "";
+      }
+
+      // URLの場合はそのまま返す
+      if (seeContent.startsWith("http://") || seeContent.startsWith("https://")) {
+        return seeContent;
+      }
+
+      // クラス参照の場合
+      if (seeContent.contains("#")) {
+        // Class#method の形式
+        return "`" + seeContent + "`";
+      } else {
+        // クラス名のみ
+        return "`" + seeContent + "`";
+      }
+    }
+
+    /**
+     * インラインタグ（{@link}、{@code}など）を処理
+     *
+     * @param content ドキュメントコンテンツ
+     * @return 処理されたコンテンツ
+     */
+    private String processInlineTags(String content) {
+      if (content == null) {
+        return "";
+      }
+
+      // {@link Class#method} → `Class#method`
+      Pattern linkPattern = Pattern.compile("\\{@link\\s+([^}]+)\\}");
+      Matcher linkMatcher = linkPattern.matcher(content);
+      content = linkMatcher.replaceAll("`$1`");
+
+      // {@code text} → `text`
+      Pattern codePattern = Pattern.compile("\\{@code\\s+([^}]+)\\}");
+      Matcher codeMatcher = codePattern.matcher(content);
+      content = codeMatcher.replaceAll("`$1`");
+
+      // {@literal text} → text
+      Pattern literalPattern = Pattern.compile("\\{@literal\\s+([^}]+)\\}");
+      Matcher literalMatcher = literalPattern.matcher(content);
+      content = literalMatcher.replaceAll("$1");
+
+      return content;
+    }
+
+    /**
+     * ノードのドキュメンテーション付きTypeInfoを作成
+     *
+     * @param name 名前
+     * @param type 型
+     * @param kind 種類
+     * @param node ソースノード（ドキュメント抽出用）
+     * @param modifiers 修飾子
+     * @return TypeInfo
+     */
+    private TypeInfo createTypeInfoWithDocumentation(
+        String name,
+        String type,
+        TypeInfo.Kind kind,
+        @Nullable AnnotatedNode node,
+        @Nullable String modifiers) {
+      String documentation = null;
+
+      // まず、ノードからGroovyDoc/JavaDocを抽出を試す
+      if (node != null) {
+        String docComment = extractDocumentation(node);
+        if (docComment != null && !docComment.trim().isEmpty()) {
+          documentation = docComment;
+        }
+      }
+
+      // GroovyDocが見つからない場合、Javaクラスの場合はJavaDocサービスを使用
+      if ((documentation == null || documentation.trim().isEmpty()) && isJavaClass(type)) {
+        var javaDocInfo = javaDocService.getClassDocumentation(type);
+        if (javaDocInfo.isDefined()) {
+          documentation = javaDocInfo.get().toMarkdown();
+        }
+      }
+
+      // ドキュメントがない場合はデフォルトメッセージ
+      if (documentation == null || documentation.trim().isEmpty()) {
+        documentation = "ドキュメントがありません";
+      }
+
+      return new TypeInfo(name, type, kind, documentation, modifiers);
+    }
+
+    /**
+     * 型名がJavaの標準クラスかどうかを判定
+     *
+     * @param typeName 型名
+     * @return Javaクラスの場合true
+     */
+    private boolean isJavaClass(String typeName) {
+      if (typeName == null) {
+        return false;
+      }
+
+      // java.* や javax.* パッケージのクラス
+      return typeName.startsWith("java.") || typeName.startsWith("javax.");
     }
   }
 }
