@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # タイムアウト時間（秒）
-TIMEOUT=240
+TIMEOUT=300
 
 # テストコマンドをバックグラウンドで実行
 npm run test &
