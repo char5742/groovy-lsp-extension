@@ -8,7 +8,9 @@ import com.groovylsp.domain.model.ScopeManager;
 import com.groovylsp.domain.model.SymbolTable;
 import com.groovylsp.domain.repository.TextDocumentRepository;
 import com.groovylsp.domain.service.AstAnalysisService;
+import com.groovylsp.domain.service.JavaDocService;
 import com.groovylsp.domain.service.TypeInfoService;
+import com.groovylsp.infrastructure.javadoc.BasicJavaDocService;
 import com.groovylsp.infrastructure.parser.DocumentContentService;
 import com.groovylsp.infrastructure.parser.GroovyAstParser;
 import com.groovylsp.infrastructure.repository.InMemoryTextDocumentRepository;
@@ -35,9 +37,15 @@ class GroovyTypeInfoServiceTest {
     TextDocumentRepository repository = new InMemoryTextDocumentRepository();
     documentContentService = new DocumentContentService(repository);
     var astAnalysisService = new AstAnalysisService(parser);
+    JavaDocService javaDocService = new BasicJavaDocService();
     service =
         new GroovyTypeInfoService(
-            parser, symbolTable, scopeManager, documentContentService, astAnalysisService);
+            parser,
+            symbolTable,
+            scopeManager,
+            documentContentService,
+            astAnalysisService,
+            javaDocService);
   }
 
   @Test
