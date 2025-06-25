@@ -2,6 +2,7 @@ import { ok } from 'node:assert/strict';
 import { join } from 'node:path';
 import { type Extension, type Hover, commands, extensions, window, workspace } from 'vscode';
 import type { ExtensionApi } from '../../types.ts';
+import { getHoverContent } from './test-helpers.ts';
 
 describe('enum関連のホバー機能E2Eテスト', () => {
   let extension: Extension<ExtensionApi> | undefined;
@@ -38,9 +39,7 @@ describe('enum関連のホバー機能E2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', enumDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     // enum情報が表示されることを確認
     ok(hoverContent.includes('Color') || hoverContent.includes('enum'), 'enum Colorの情報が表示される必要があります');
@@ -58,9 +57,7 @@ describe('enum関連のホバー機能E2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', enumDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(hoverContent.includes('RED') || hoverContent.includes('Color'), 'enum定数REDの情報が表示される必要があります');
   });
@@ -74,9 +71,7 @@ describe('enum関連のホバー機能E2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', enumDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(
       hoverContent.includes('Color') && !hoverContent.includes('Object'),
@@ -93,9 +88,7 @@ describe('enum関連のホバー機能E2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', enumDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(
       hoverContent.includes('PENDING') || hoverContent.includes('Status'),
@@ -112,9 +105,7 @@ describe('enum関連のホバー機能E2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', enumDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(
       hoverContent.includes('InnerEnum') || hoverContent.includes('enum'),
@@ -131,9 +122,7 @@ describe('enum関連のホバー機能E2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', enumDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(
       hoverContent.includes('PENDING') || hoverContent.includes('Status'),

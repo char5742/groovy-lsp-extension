@@ -2,6 +2,7 @@ import { ok } from 'node:assert/strict';
 import { join } from 'node:path';
 import { type Extension, type Hover, commands, extensions, window, workspace } from 'vscode';
 import type { ExtensionApi } from '../../types.ts';
+import { getHoverContent } from './test-helpers.ts';
 
 describe('オブジェクト指向機能のホバーE2Eテスト', () => {
   let extension: Extension<ExtensionApi> | undefined;
@@ -38,9 +39,7 @@ describe('オブジェクト指向機能のホバーE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', oopDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     // レコード情報が表示されることを確認
     ok(
@@ -64,9 +63,7 @@ describe('オブジェクト指向機能のホバーE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', oopDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(hoverContent.includes('InnerClass'), 'InnerClassの情報が表示される必要があります');
 
@@ -83,9 +80,7 @@ describe('オブジェクト指向機能のホバーE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', oopDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(hoverContent.includes('makeSound'), 'makeSoundメソッドの情報が表示される必要があります');
 
@@ -103,9 +98,7 @@ describe('オブジェクト指向機能のホバーE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', oopDoc.uri, position);
 
     if (hovers && hovers.length > 0) {
-      const hoverContent = hovers[0].contents
-        .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-        .join('');
+      const hoverContent = getHoverContent(hovers);
 
       // 型パラメータの情報が表示されることを確認
       ok(
@@ -126,9 +119,7 @@ describe('オブジェクト指向機能のホバーE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', oopDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(hoverContent.includes('add'), 'addメソッドの情報が表示される必要があります');
 
@@ -145,9 +136,7 @@ describe('オブジェクト指向機能のホバーE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', oopDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(
       hoverContent.includes('StaticNestedClass') || hoverContent.includes('class'),
@@ -164,9 +153,7 @@ describe('オブジェクト指向機能のホバーE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', oopDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(hoverContent.includes('Product'), 'Productクラスの情報が表示される必要があります');
   });
