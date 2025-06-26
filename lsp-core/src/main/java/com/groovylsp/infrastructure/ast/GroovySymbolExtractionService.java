@@ -5,8 +5,9 @@ import com.groovylsp.domain.service.SymbolExtractionService;
 import com.groovylsp.infrastructure.parser.GroovyAstParser;
 import io.vavr.control.Either;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import org.codehaus.groovy.ast.ClassHelper;
@@ -46,11 +47,33 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
   private final GroovyAstParser parser;
 
   /** クラス名解決結果のキャッシュ（パフォーマンス改善のため） */
-  private final ConcurrentHashMap<String, Boolean> classExistenceCache = new ConcurrentHashMap<>();
+  private final Map<String, Boolean> classExistenceCache = createLRUCache(1000);
 
   @Inject
   public GroovySymbolExtractionService(GroovyAstParser parser) {
     this.parser = parser;
+  }
+
+  /**
+   * LRUキャッシュを作成する
+   *
+   * @param maxSize 最大サイズ
+   * @return LRUキャッシュ
+   */
+  private static Map<String, Boolean> createLRUCache(int maxSize) {
+    return new LinkedHashMap<String, Boolean>(16, 0.75f, true) {
+      @Override
+      protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
+        return size() > maxSize;
+      }
+    };
+  }
+
+  /** キャッシュをクリアする（メモリ解放用） */
+  public void clearCache() {
+    synchronized (classExistenceCache) {
+      classExistenceCache.clear();
+    }
   }
 
   @Override
@@ -562,7 +585,7 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
       return ClassHelper.make(className);
     }
 
-    // インポート文から解決を試みる
+    // 優先順位1: 明示的なインポート文から解決を試みる
     for (var importNode : moduleNode.getImports()) {
       String importClassName = importNode.getClassName();
       if (importClassName.endsWith("." + className)) {
@@ -570,19 +593,34 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
       }
     }
 
-    // スターインポートから解決を試みる
+    // 優先順位2: 同一パッケージのクラス（将来の拡張用）
+    String packageName = moduleNode.getPackageName();
+    if (packageName != null && !packageName.isEmpty()) {
+      String samePackageClass = packageName + "." + className;
+      if (isClassExists(samePackageClass)) {
+        return ClassHelper.make(samePackageClass);
+      }
+    }
+
+    // 優先順位3: スターインポートから解決を試みる
     for (var starImport : moduleNode.getStarImports()) {
-      String packageName = starImport.getPackageName();
-      if (packageName != null) {
-        String fullClassName = packageName + "." + className;
+      String starPackageName = starImport.getPackageName();
+      if (starPackageName != null) {
+        // パッケージ名が "." で終わる場合は削除
+        if (starPackageName.endsWith(".")) {
+          starPackageName = starPackageName.substring(0, starPackageName.length() - 1);
+        }
+        String fullClassName = starPackageName + "." + className;
         if (isClassExists(fullClassName)) {
           return ClassHelper.make(fullClassName);
         }
       }
     }
 
-    // デフォルトインポート（java.lang.*など）から解決を試みる
-    String[] defaultPackages = {"java.lang", "groovy.lang"};
+    // 優先順位4: デフォルトインポート（java.lang.*、groovy.lang.*など）
+    String[] defaultPackages = {
+      "java.lang", "groovy.lang", "java.util", "java.io", "java.net", "groovy.util"
+    };
     for (String pkg : defaultPackages) {
       String fullClassName = pkg + "." + className;
       if (isClassExists(fullClassName)) {
@@ -600,15 +638,19 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
    * @return クラスが存在する場合true
    */
   private boolean isClassExists(String fullClassName) {
-    return classExistenceCache.computeIfAbsent(
-        fullClassName,
-        className -> {
-          try {
-            Class.forName(className);
-            return true;
-          } catch (ClassNotFoundException e) {
-            return false;
-          }
-        });
+    synchronized (classExistenceCache) {
+      return classExistenceCache.computeIfAbsent(
+          fullClassName,
+          className -> {
+            try {
+              Class.forName(className);
+              return true;
+            } catch (ClassNotFoundException e) {
+              // プロジェクト固有のクラスは解決できないため、デバッグレベルでログ出力
+              logger.debug("Class not found in classpath: {}", className);
+              return false;
+            }
+          });
+    }
   }
 }

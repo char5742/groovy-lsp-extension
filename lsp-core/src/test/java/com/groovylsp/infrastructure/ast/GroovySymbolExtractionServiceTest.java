@@ -720,5 +720,223 @@ class GroovySymbolExtractionServiceTest {
                 assertThat(field.detail()).isEqualTo(": AnotherMissingClass");
               });
     }
+
+    @Test
+    @DisplayName("キャッシュクリア機能が正しく動作する")
+    void cacheClearWorksCorrectly() {
+      // given
+      String sourceCode =
+          """
+          import java.util.*
+
+          class CacheClearTest {
+              def list = Mock(List)
+              def map = Mock(Map)
+          }
+          """;
+
+      // when - 1回目の解析
+      Either<String, List<Symbol>> result1 =
+          service.extractSymbols("file:///test/CacheClearTest.groovy", sourceCode);
+
+      // キャッシュをクリア
+      service.clearCache();
+
+      // 2回目の解析
+      Either<String, List<Symbol>> result2 =
+          service.extractSymbols("file:///test/CacheClearTest.groovy", sourceCode);
+
+      // then - 両方とも正しく解析される
+      assertThat(result1.isRight()).isTrue();
+      assertThat(result2.isRight()).isTrue();
+
+      List<Symbol> symbols1 = result1.get();
+      List<Symbol> symbols2 = result2.get();
+
+      // 同じ結果が得られることを確認
+      assertThat(symbols1).hasSize(1);
+      assertThat(symbols2).hasSize(1);
+
+      assertThat(symbols1.get(0).children()).hasSize(2);
+      assertThat(symbols2.get(0).children()).hasSize(2);
+    }
+  }
+
+  @Nested
+  @DisplayName("名前解決の優先順位")
+  class NameResolutionPriority {
+
+    @Test
+    @DisplayName("明示的インポートがスターインポートより優先される")
+    void explicitImportTakesPrecedence() {
+      // given
+      String sourceCode =
+          """
+          import java.util.Date
+          import java.sql.*
+
+          class ImportPriorityTest {
+              def date = Mock(Date)  // java.util.Dateが使われるべき
+          }
+          """;
+
+      // when
+      Either<String, List<Symbol>> result =
+          service.extractSymbols("file:///test/ImportPriorityTest.groovy", sourceCode);
+
+      // then
+      assertThat(result.isRight()).isTrue();
+      List<Symbol> symbols = result.get();
+      assertThat(symbols).hasSize(1);
+
+      Symbol classSymbol = symbols.get(0);
+      assertThat(classSymbol.children())
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("date");
+                // java.util.Dateが優先されることを確認
+                assertThat(field.detail()).isEqualTo(": Date");
+              });
+    }
+
+    @Test
+    @DisplayName("スターインポートがデフォルトインポートより優先される")
+    void starImportTakesPrecedenceOverDefault() {
+      // given
+      String sourceCode =
+          """
+          import com.example.*
+
+          class StarImportTest {
+              def list = Mock(List)  // java.util.Listが使われる（デフォルト）
+              def customList = Mock(CustomList)  // com.example.CustomListは存在しないため解決されない
+          }
+          """;
+
+      // when
+      Either<String, List<Symbol>> result =
+          service.extractSymbols("file:///test/StarImportTest.groovy", sourceCode);
+
+      // then
+      assertThat(result.isRight()).isTrue();
+      List<Symbol> symbols = result.get();
+      assertThat(symbols).hasSize(1);
+
+      Symbol classSymbol = symbols.get(0);
+      assertThat(classSymbol.children())
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("list");
+                assertThat(field.detail()).isEqualTo(": List");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("customList");
+                // 存在しないクラスでもフォールバックで作成される
+                assertThat(field.detail()).isEqualTo(": CustomList");
+              });
+    }
+
+    @Test
+    @DisplayName("同じパッケージのクラスが優先的に解決される")
+    void samePackageClassResolution() {
+      // given
+      String sourceCode =
+          """
+          package com.example
+
+          import java.util.*
+
+          class SamePackageTest {
+              def helper = Mock(Helper)  // 同じパッケージのHelperクラスを想定
+              def list = Mock(List)      // java.util.List
+          }
+
+          class Helper {
+              String name
+          }
+          """;
+
+      // when
+      Either<String, List<Symbol>> result =
+          service.extractSymbols("file:///test/SamePackageTest.groovy", sourceCode);
+
+      // then
+      assertThat(result.isRight()).isTrue();
+      List<Symbol> symbols = result.get();
+
+      // デバッグ用：実際に返されたシンボルを確認
+      assertThat(symbols).hasSizeGreaterThanOrEqualTo(1);
+
+      // SamePackageTestクラスを検証
+      Symbol testClass =
+          symbols.stream()
+              .filter(s -> s.name().equals("com.example.SamePackageTest"))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new AssertionError(
+                          "com.example.SamePackageTest not found. Found symbols: "
+                              + symbols.stream().map(Symbol::name).toList()));
+
+      assertThat(testClass.children())
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("helper");
+                assertThat(field.detail()).isEqualTo(": Helper");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("list");
+                assertThat(field.detail()).isEqualTo(": List");
+              });
+    }
+
+    @Test
+    @DisplayName("Groovyのデフォルトインポートが機能する")
+    void groovyDefaultImports() {
+      // given
+      String sourceCode =
+          """
+          class GroovyDefaultTest {
+              def bigInt = Mock(BigInteger)    // java.math.BigInteger (java.lang以外)
+              def bigDec = Mock(BigDecimal)    // java.math.BigDecimal
+              def file = Mock(File)            // java.io.File
+              def url = Mock(URL)              // java.net.URL
+          }
+          """;
+
+      // when
+      Either<String, List<Symbol>> result =
+          service.extractSymbols("file:///test/GroovyDefaultTest.groovy", sourceCode);
+
+      // then
+      assertThat(result.isRight()).isTrue();
+      List<Symbol> symbols = result.get();
+      assertThat(symbols).hasSize(1);
+
+      Symbol classSymbol = symbols.get(0);
+      assertThat(classSymbol.children())
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("bigInt");
+                assertThat(field.detail()).isEqualTo(": BigInteger");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("bigDec");
+                assertThat(field.detail()).isEqualTo(": BigDecimal");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("file");
+                assertThat(field.detail()).isEqualTo(": File");
+              })
+          .anySatisfy(
+              field -> {
+                assertThat(field.name()).isEqualTo("url");
+                assertThat(field.detail()).isEqualTo(": URL");
+              });
+    }
   }
 }
