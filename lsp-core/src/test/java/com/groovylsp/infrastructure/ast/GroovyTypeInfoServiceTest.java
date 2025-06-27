@@ -9,6 +9,7 @@ import com.groovylsp.domain.model.SymbolTable;
 import com.groovylsp.domain.repository.TextDocumentRepository;
 import com.groovylsp.domain.service.AstAnalysisService;
 import com.groovylsp.domain.service.TypeInfoService;
+import com.groovylsp.infrastructure.documentation.GroovyDocumentationService;
 import com.groovylsp.infrastructure.parser.DocumentContentService;
 import com.groovylsp.infrastructure.parser.GroovyAstParser;
 import com.groovylsp.infrastructure.repository.InMemoryTextDocumentRepository;
@@ -35,9 +36,10 @@ class GroovyTypeInfoServiceTest {
     TextDocumentRepository repository = new InMemoryTextDocumentRepository();
     documentContentService = new DocumentContentService(repository);
     var astAnalysisService = new AstAnalysisService(parser);
+    var documentationService = new GroovyDocumentationService();
     service =
         new GroovyTypeInfoService(
-            parser, symbolTable, scopeManager, documentContentService, astAnalysisService);
+            parser, symbolTable, scopeManager, documentContentService, astAnalysisService, documentationService);
   }
 
   @Test
