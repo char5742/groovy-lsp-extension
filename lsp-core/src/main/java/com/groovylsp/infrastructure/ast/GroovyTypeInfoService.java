@@ -2,11 +2,13 @@ package com.groovylsp.infrastructure.ast;
 
 import com.groovylsp.domain.model.AstInfo;
 import com.groovylsp.domain.model.ClassInfo;
+
 import com.groovylsp.domain.model.MethodInfo;
 import com.groovylsp.domain.model.ScopeManager;
 import com.groovylsp.domain.model.SymbolDefinition;
 import com.groovylsp.domain.model.SymbolTable;
 import com.groovylsp.domain.service.AstAnalysisService;
+import com.groovylsp.domain.service.DocumentationService;
 import com.groovylsp.domain.service.TypeInfoService;
 import com.groovylsp.infrastructure.parser.DocumentContentService;
 import com.groovylsp.infrastructure.parser.GroovyAstParser;
@@ -68,6 +70,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
   private final ScopeManager scopeManager;
   private final DocumentContentService documentContentService;
   private final AstAnalysisService astAnalysisService;
+  private final DocumentationService documentationService;
 
   @Inject
   public GroovyTypeInfoService(
@@ -75,12 +78,14 @@ public class GroovyTypeInfoService implements TypeInfoService {
       SymbolTable symbolTable,
       ScopeManager scopeManager,
       DocumentContentService documentContentService,
-      AstAnalysisService astAnalysisService) {
+      AstAnalysisService astAnalysisService,
+      DocumentationService documentationService) {
     this.parser = parser;
     this.symbolTable = symbolTable;
     this.scopeManager = scopeManager;
     this.documentContentService = documentContentService;
     this.astAnalysisService = astAnalysisService;
+    this.documentationService = documentationService;
   }
 
   @Override
@@ -294,6 +299,27 @@ public class GroovyTypeInfoService implements TypeInfoService {
     }
 
     return sb.toString();
+  }
+
+  /**
+   * ASTノードからドキュメント付きTypeInfoを作成
+   *
+   * @param node ASTノード
+   * @param name シンボル名
+   * @param type 型情報
+   * @param kind 種類
+   * @return TypeInfo
+   */
+  private TypeInfo createTypeInfoWithDocumentation(ASTNode node, String name, String type, TypeInfo.Kind kind) {
+    // DocumentationServiceを使用してドキュメントを取得
+    var documentation = documentationService.getDocumentation(node);
+    
+    String docString = null;
+    if (documentation.isDefined()) {
+      docString = documentationService.formatDocumentation(documentation.get());
+    }
+
+    return new TypeInfo(name, type, kind, docString, null);
   }
 
   /** AST訪問者クラス（型情報を探索） */
@@ -949,13 +975,20 @@ public class GroovyTypeInfoService implements TypeInfoService {
       // クラスとして扱う（インターフェースも含む）
       TypeInfo.Kind kind = TypeInfo.Kind.CLASS;
 
-      // ドキュメントを生成
-      String documentation = createClassDocumentation(classNode);
+      // DocumentationServiceを使用してドキュメントを取得
+      var documentation = documentationService.getDocumentation(classNode);
+      String docString = null;
+      if (documentation.isDefined()) {
+        docString = documentationService.formatDocumentation(documentation.get());
+      } else {
+        // フォールバック: 従来のドキュメント生成
+        docString = createClassDocumentation(classNode);
+      }
 
       // 修飾子を取得
       String modifiers = getModifiersString(classNode.getModifiers());
 
-      return new TypeInfo(className, fullName, kind, documentation, modifiers);
+      return new TypeInfo(className, fullName, kind, docString, modifiers);
     }
 
     /**
