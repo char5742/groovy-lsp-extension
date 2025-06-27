@@ -2,6 +2,7 @@ import { ok } from 'node:assert/strict';
 import { join } from 'node:path';
 import { type Extension, type Hover, commands, extensions, window, workspace } from 'vscode';
 import type { ExtensionApi } from '../../types.ts';
+import { getHoverContent } from './test-helpers.ts';
 
 describe('ホバー機能のE2Eテスト', () => {
   let extension: Extension<ExtensionApi> | undefined;
@@ -37,9 +38,7 @@ describe('ホバー機能のE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
     ok(
       hoverContent.includes('User') || hoverContent.includes('class') || hoverContent.includes('Groovy'),
       'ホバー内容にUserクラスまたはGroovy要素の情報が含まれる必要があります',
@@ -54,9 +53,7 @@ describe('ホバー機能のE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
     ok(
       hoverContent.includes('getUser') || hoverContent.includes('User') || hoverContent.includes('Groovy'),
       'ホバー内容にgetUserメソッドまたはGroovy要素の情報が含まれる必要があります',
@@ -69,9 +66,7 @@ describe('ホバー機能のE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
     ok(
       hoverContent.includes('id') || hoverContent.includes('Long') || hoverContent.includes('Groovy'),
       'ホバー内容にプロパティの型情報が含まれる必要があります',
@@ -88,9 +83,7 @@ describe('ホバー機能のE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, typePosition);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     // フィールド名"userService"の位置にもホバー
     const fieldNamePosition = editor.document.positionAt(fieldIndex + 'private UserService '.length);
@@ -102,9 +95,7 @@ describe('ホバー機能のE2Eテスト', () => {
     );
 
     if (fieldHovers && fieldHovers.length > 0) {
-      const fieldHoverContent = fieldHovers[0].contents
-        .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-        .join('');
+      const fieldHoverContent = getHoverContent(fieldHovers);
       ok(
         fieldHoverContent.includes('userService') || fieldHoverContent.includes('UserService'),
         'フィールド名からも型情報を取得できる必要があります',
@@ -125,9 +116,7 @@ describe('ホバー機能のE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
     ok(
       hoverContent.includes('UserController') ||
         hoverContent.includes('constructor') ||
@@ -145,9 +134,7 @@ describe('ホバー機能のE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
     ok(
       hoverContent.includes('user') || hoverContent.includes('User') || hoverContent.includes('Groovy'),
       'ホバー内容にローカル変数の型情報が含まれる必要があります',
@@ -162,9 +149,7 @@ describe('ホバー機能のE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
     ok(
       hoverContent.includes('name') || hoverContent.includes('String') || hoverContent.includes('Groovy'),
       'ホバー内容にパラメータの型情報が含まれる必要があります',
@@ -179,9 +164,7 @@ describe('ホバー機能のE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
     ok(
       hoverContent.includes('Long') || hoverContent.includes('type') || hoverContent.includes('Groovy'),
       'ホバー内容に型情報が含まれる必要があります',
@@ -194,9 +177,7 @@ describe('ホバー機能のE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
     ok(
       hoverContent.includes('findById') || hoverContent.includes('UserService') || hoverContent.includes('Groovy'),
       'ホバー内容にメソッド呼び出し情報が含まれる必要があります',

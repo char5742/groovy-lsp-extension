@@ -2,6 +2,7 @@ import { ok } from 'node:assert/strict';
 import { join } from 'node:path';
 import { type Extension, type Hover, commands, extensions, window, workspace } from 'vscode';
 import type { ExtensionApi } from '../../types.ts';
+import { getHoverContent } from './test-helpers.ts';
 
 describe('クロージャ変数itのホバーE2Eテスト', () => {
   let extension: Extension<ExtensionApi> | undefined;
@@ -38,9 +39,7 @@ describe('クロージャ変数itのホバーE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', closureItDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(hoverContent.includes('it'), 'it変数の情報が表示される必要があります');
     ok(hoverContent.includes('Integer') || hoverContent.includes('int'), 'Integer型の情報が含まれる必要があります');
@@ -55,9 +54,7 @@ describe('クロージャ変数itのホバーE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', closureItDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(hoverContent.includes('it'), 'it変数の情報が表示される必要があります');
     ok(hoverContent.includes('String'), 'String型の情報が含まれる必要があります');
@@ -72,9 +69,7 @@ describe('クロージャ変数itのホバーE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', closureItDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(hoverContent.includes('it'), 'it変数の情報が表示される必要があります');
     // Map.Entry型の情報が含まれることを確認
@@ -90,9 +85,7 @@ describe('クロージャ変数itのホバーE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', closureItDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(hoverContent.includes('it'), 'it変数の情報が表示される必要があります');
     ok(hoverContent.includes('Integer') || hoverContent.includes('int'), 'Integer型の情報が含まれる必要があります');
@@ -107,9 +100,7 @@ describe('クロージャ変数itのホバーE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', closureItDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(hoverContent.includes('it'), 'it変数の情報が表示される必要があります');
     ok(hoverContent.includes('Person'), 'Person型の情報が含まれる必要があります');
@@ -125,9 +116,7 @@ describe('クロージャ変数itのホバーE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', closureItDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(hoverContent.includes('it'), 'it変数の情報が表示される必要があります');
     ok(hoverContent.includes('Integer') || hoverContent.includes('int'), 'Integer型の情報が含まれる必要があります');
@@ -142,9 +131,7 @@ describe('クロージャ変数itのホバーE2Eテスト', () => {
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', closureItDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(hoverContent.includes('it'), 'it変数の情報が表示される必要があります');
     ok(

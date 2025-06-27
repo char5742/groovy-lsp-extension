@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { type Extension, type Hover, Position, commands, extensions, window, workspace } from 'vscode';
 import type { ExtensionApi } from '../../types.ts';
+import { getHoverContent } from './test-helpers.ts';
 
 describe('ホバー機能のE2Eテスト - スコープシャドウイング', () => {
   let extension: Extension<ExtensionApi> | undefined;
@@ -37,9 +38,7 @@ describe('ホバー機能のE2Eテスト - スコープシャドウイング', (
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'クラスフィールドnameにホバー情報が表示されるべきです');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
     ok(
       hoverContent.includes('name') && hoverContent.includes('String'),
       `ホバー情報にnameとString型が含まれるべきです。実際の内容: ${hoverContent}`,
@@ -52,9 +51,7 @@ describe('ホバー機能のE2Eテスト - スコープシャドウイング', (
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'メソッドローカル変数nameにホバー情報が表示されるべきです');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
     ok(
       hoverContent.includes('name') && (hoverContent.includes('String') || hoverContent.includes('ローカル変数')),
       `ホバー情報にローカル変数nameが含まれるべきです。実際の内容: ${hoverContent}`,
@@ -68,11 +65,8 @@ describe('ホバー機能のE2Eテスト - スコープシャドウイング', (
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
 
     if (hovers && hovers.length > 0) {
-      const hoverContent = hovers[0].contents
-        .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-        .join('');
+      const hoverContent = getHoverContent(hovers);
       ok(hoverContent.includes('name'), `ホバー情報に変数nameが含まれるべきです。実際の内容: ${hoverContent}`);
-    } else {
     }
   });
 
@@ -82,9 +76,7 @@ describe('ホバー機能のE2Eテスト - スコープシャドウイング', (
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'クロージャ内変数outerにホバー情報が表示されるべきです');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
     ok(hoverContent.includes('outer'), `ホバー情報に変数outerが含まれるべきです。実際の内容: ${hoverContent}`);
   });
 
@@ -94,9 +86,7 @@ describe('ホバー機能のE2Eテスト - スコープシャドウイング', (
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', groovyDoc.uri, position);
 
     if (hovers && hovers.length > 0) {
-      const hoverContent = hovers[0].contents
-        .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-        .join('');
+      const hoverContent = getHoverContent(hovers);
       ok(
         hoverContent.includes('instanceName') || hoverContent.includes('String'),
         `ホバー情報にinstanceNameフィールドが含まれるべきです。実際の内容: ${hoverContent}`,

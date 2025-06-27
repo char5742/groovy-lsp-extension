@@ -1,6 +1,7 @@
 import { ok } from 'node:assert/strict';
 import { type Extension, type Hover, commands, extensions, window, workspace } from 'vscode';
 import type { ExtensionApi } from '../../types.ts';
+import { getHoverContent } from './test-helpers.ts';
 
 describe('ホバー機能の型推論E2Eテスト', () => {
   let extension: Extension<ExtensionApi> | undefined;
@@ -59,9 +60,7 @@ class UserController {
     );
 
     ok(controllerHovers && controllerHovers.length > 0, 'controller: ホバー結果が返される必要があります');
-    const controllerContent = controllerHovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const controllerContent = getHoverContent(controllerHovers);
     ok(
       controllerContent.includes('UserController') && !controllerContent.includes('Object'),
       'controller: UserController型として推論される必要があります（Objectではない）',
@@ -74,9 +73,7 @@ class UserController {
     const nameHovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', doc.uri, namePosition);
 
     if (nameHovers && nameHovers.length > 0) {
-      const nameContent = nameHovers[0].contents
-        .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-        .join('');
+      const nameContent = getHoverContent(nameHovers);
       ok(
         nameContent.includes('String') || nameContent.includes('name'),
         'name: String型として推論される必要があります',
@@ -90,9 +87,7 @@ class UserController {
     const ageHovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', doc.uri, agePosition);
 
     if (ageHovers && ageHovers.length > 0) {
-      const ageContent = ageHovers[0].contents
-        .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-        .join('');
+      const ageContent = getHoverContent(ageHovers);
       ok(ageContent.includes('int') || ageContent.includes('Integer'), 'age: int型として推論される必要があります');
     }
 
@@ -103,9 +98,7 @@ class UserController {
     const scoresHovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', doc.uri, scoresPosition);
 
     if (scoresHovers && scoresHovers.length > 0) {
-      const scoresContent = scoresHovers[0].contents
-        .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-        .join('');
+      const scoresContent = getHoverContent(scoresHovers);
       ok(
         scoresContent.includes('ArrayList') || scoresContent.includes('List'),
         'scores: ArrayList型として推論される必要があります',
@@ -164,9 +157,7 @@ class User {}`;
     );
 
     ok(userServiceHovers && userServiceHovers.length > 0, 'userService: ホバー結果が返される必要があります');
-    const userServiceContent = userServiceHovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const userServiceContent = getHoverContent(userServiceHovers);
     ok(
       userServiceContent.includes('UserService') && !userServiceContent.includes('Object'),
       'userService: UserService型として推論される必要があります（Objectではない）',
@@ -183,9 +174,7 @@ class User {}`;
     );
 
     if (repositoryHovers && repositoryHovers.length > 0) {
-      const repositoryContent = repositoryHovers[0].contents
-        .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-        .join('');
+      const repositoryContent = getHoverContent(repositoryHovers);
       ok(
         repositoryContent.includes('UserRepository') && !repositoryContent.includes('Object'),
         'repository: UserRepository型として推論される必要があります',
@@ -199,9 +188,7 @@ class User {}`;
     const cacheHovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', doc.uri, cachePosition);
 
     if (cacheHovers && cacheHovers.length > 0) {
-      const cacheContent = cacheHovers[0].contents
-        .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-        .join('');
+      const cacheContent = getHoverContent(cacheHovers);
       ok(
         cacheContent.includes('CacheService') && !cacheContent.includes('Object'),
         'cache: CacheService型として推論される必要があります',
@@ -259,9 +246,7 @@ interface UserRepository {
     );
 
     ok(controllerRefHovers && controllerRefHovers.length > 0, 'controller参照: ホバー結果が返される必要があります');
-    const controllerRefContent = controllerRefHovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const controllerRefContent = getHoverContent(controllerRefHovers);
     ok(
       controllerRefContent.includes('UserController') && !controllerRefContent.includes('Object'),
       'controller参照: メソッド内でもUserController型として推論される必要があります',
@@ -278,9 +263,7 @@ interface UserRepository {
     );
 
     if (repositoryRefHovers && repositoryRefHovers.length > 0) {
-      const repositoryRefContent = repositoryRefHovers[0].contents
-        .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-        .join('');
+      const repositoryRefContent = getHoverContent(repositoryRefHovers);
       ok(
         repositoryRefContent.includes('UserRepository') && !repositoryRefContent.includes('Object'),
         'repository参照: UserRepository型として推論される必要があります',
@@ -298,9 +281,7 @@ interface UserRepository {
     );
 
     if (thisControllerHovers && thisControllerHovers.length > 0) {
-      const thisControllerContent = thisControllerHovers[0].contents
-        .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-        .join('');
+      const thisControllerContent = getHoverContent(thisControllerHovers);
       ok(
         thisControllerContent.includes('UserController') || thisControllerContent.includes('controller'),
         'this.controller参照: UserController型として推論される必要があります',
@@ -341,9 +322,7 @@ class UserController {}`;
     );
 
     ok(controllerHovers && controllerHovers.length > 0, 'controller: ホバー結果が返される必要があります');
-    const controllerContent = controllerHovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const controllerContent = getHoverContent(controllerHovers);
     // 明示的にObjectと宣言されている場合はObjectのままであるべき
     ok(
       controllerContent.includes('Object') || controllerContent.includes('controller'),
@@ -357,9 +336,7 @@ class UserController {}`;
     const stringHovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', doc.uri, stringPosition);
 
     if (stringHovers && stringHovers.length > 0) {
-      const stringContent = stringHovers[0].contents
-        .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-        .join('');
+      const stringContent = getHoverContent(stringHovers);
       ok(stringContent.includes('String'), 'explicitString: String型として表示される必要があります');
     }
   });

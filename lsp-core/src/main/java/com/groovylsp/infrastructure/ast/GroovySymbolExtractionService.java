@@ -5,7 +5,9 @@ import com.groovylsp.domain.service.SymbolExtractionService;
 import com.groovylsp.infrastructure.parser.GroovyAstParser;
 import io.vavr.control.Either;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import org.codehaus.groovy.ast.ClassHelper;
@@ -25,6 +27,7 @@ import org.codehaus.groovy.ast.expr.MethodCallExpression;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.SymbolKind;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,9 +46,35 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
 
   private final GroovyAstParser parser;
 
+  /** クラス名解決結果のキャッシュ（パフォーマンス改善のため） */
+  private final Map<String, Boolean> classExistenceCache = createLRUCache(1000);
+
   @Inject
   public GroovySymbolExtractionService(GroovyAstParser parser) {
     this.parser = parser;
+  }
+
+  /**
+   * LRUキャッシュを作成する
+   *
+   * @param maxSize 最大サイズ
+   * @return LRUキャッシュ
+   */
+  private static Map<String, Boolean> createLRUCache(int maxSize) {
+    int initialCapacity = (int) Math.ceil(maxSize / 0.75f);
+    return new LinkedHashMap<String, Boolean>(initialCapacity, 0.75f, true) {
+      @Override
+      protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
+        return size() > maxSize;
+      }
+    };
+  }
+
+  /** キャッシュをクリアする（メモリ解放用） */
+  public void clearCache() {
+    synchronized (classExistenceCache) {
+      classExistenceCache.clear();
+    }
   }
 
   @Override
@@ -67,7 +96,7 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
                 // すべてのクラスを処理
                 for (ClassNode classNode : parseResult.getClasses()) {
                   if (shouldIncludeClass(classNode)) {
-                    Symbol classSymbol = extractClassSymbol(classNode);
+                    Symbol classSymbol = extractClassSymbol(classNode, moduleNode);
                     symbols.add(classSymbol);
                   }
                 }
@@ -107,22 +136,23 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
    * クラスノードからシンボル情報を抽出
    *
    * @param classNode クラスノード
+   * @param moduleNode モジュールノード
    * @return クラスのシンボル情報
    */
-  private Symbol extractClassSymbol(ClassNode classNode) {
+  private Symbol extractClassSymbol(ClassNode classNode, ModuleNode moduleNode) {
     List<Symbol> children = new ArrayList<>();
 
     // フィールドを抽出
     for (FieldNode field : classNode.getFields()) {
       if (!field.isSynthetic() && !field.getName().startsWith("$")) {
-        children.add(extractFieldSymbol(field));
+        children.add(extractFieldSymbol(field, moduleNode));
       }
     }
 
     // プロパティを抽出
     for (PropertyNode property : classNode.getProperties()) {
       if (!property.isSynthetic()) {
-        children.add(extractPropertySymbol(property));
+        children.add(extractPropertySymbol(property, moduleNode));
       }
     }
 
@@ -187,9 +217,10 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
    * フィールドノードからシンボル情報を抽出
    *
    * @param field フィールドノード
+   * @param moduleNode モジュールノード
    * @return フィールドのシンボル情報
    */
-  private Symbol extractFieldSymbol(FieldNode field) {
+  private Symbol extractFieldSymbol(FieldNode field, ModuleNode moduleNode) {
     Range range =
         createRange(
             field.getLineNumber(),
@@ -209,7 +240,7 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
             range);
 
     // フィールドの型を推論
-    ClassNode fieldType = inferFieldType(field);
+    ClassNode fieldType = inferFieldType(field, moduleNode);
     String detail = formatTypeDetail(fieldType);
 
     return Symbol.create(field.getName(), SymbolKind.Field, range, selectionRange, detail);
@@ -219,9 +250,10 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
    * プロパティノードからシンボル情報を抽出
    *
    * @param property プロパティノード
+   * @param moduleNode モジュールノード
    * @return プロパティのシンボル情報
    */
-  private Symbol extractPropertySymbol(PropertyNode property) {
+  private Symbol extractPropertySymbol(PropertyNode property, ModuleNode moduleNode) {
     Range range =
         createRange(
             property.getLineNumber(),
@@ -246,7 +278,7 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
     ClassNode propertyType;
     FieldNode field = property.getField();
     if (field != null) {
-      propertyType = inferFieldType(field);
+      propertyType = inferFieldType(field, moduleNode);
     } else {
       propertyType = property.getType();
     }
@@ -413,9 +445,10 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
    * フィールドの型を推論
    *
    * @param field フィールドノード
+   * @param moduleNode モジュールノード
    * @return 推論された型（推論できない場合は宣言された型）
    */
-  private ClassNode inferFieldType(FieldNode field) {
+  private ClassNode inferFieldType(FieldNode field, ModuleNode moduleNode) {
     // 明示的に型が宣言されている場合（defやObjectでない場合）はその型を使用
     ClassNode declaredType = field.getType();
     if (!field.isDynamicTyped() && !"java.lang.Object".equals(declaredType.getName())) {
@@ -425,7 +458,7 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
     // 初期化式から型を推論
     if (field.hasInitialExpression()) {
       Expression init = field.getInitialExpression();
-      ClassNode inferredType = inferTypeFromExpression(init);
+      ClassNode inferredType = inferTypeFromExpression(init, moduleNode);
       if (inferredType != null && !"java.lang.Object".equals(inferredType.getName())) {
         return inferredType;
       }
@@ -439,9 +472,10 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
    * 式から型を推論
    *
    * @param expression 式
+   * @param moduleNode モジュールノード
    * @return 推論された型（推論できない場合はnull）
    */
-  private ClassNode inferTypeFromExpression(Expression expression) {
+  private ClassNode inferTypeFromExpression(Expression expression, ModuleNode moduleNode) {
     if (expression instanceof ConstructorCallExpression) {
       // new User(...) の場合、User型を返す
       var ctorCall = (ConstructorCallExpression) expression;
@@ -490,7 +524,12 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
               // Mock(UserService)のように、引数が変数として扱われる場合
               var varExpr = (org.codehaus.groovy.ast.expr.VariableExpression) firstArg;
               String typeName = varExpr.getName();
-              // 型名から直接ClassNodeを作成
+              // 変数名から型を解決
+              ClassNode resolvedType = resolveClassName(typeName, moduleNode);
+              if (resolvedType != null) {
+                return resolvedType;
+              }
+              // 解決できない場合は型名から直接ClassNodeを作成（フォールバック）
               return ClassHelper.make(typeName);
             }
           }
@@ -528,5 +567,91 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
 
     return new Range(
         new Position(lspStartLine, lspStartColumn), new Position(lspEndLine, lspEndColumn));
+  }
+
+  /**
+   * クラス名を解決（インポートを考慮）
+   *
+   * @param className クラス名（単純名または完全修飾名）
+   * @param moduleNode モジュールノード
+   * @return 解決されたClassNode（解決できない場合はnull）
+   */
+  private @Nullable ClassNode resolveClassName(String className, ModuleNode moduleNode) {
+    if (className == null || moduleNode == null) {
+      return null;
+    }
+
+    // 完全修飾名の場合はそのまま作成
+    if (className.contains(".")) {
+      return ClassHelper.make(className);
+    }
+
+    // 優先順位1: 明示的なインポート文から解決を試みる
+    for (var importNode : moduleNode.getImports()) {
+      String importClassName = importNode.getClassName();
+      if (importClassName.endsWith("." + className)) {
+        return ClassHelper.make(importClassName);
+      }
+    }
+
+    // 優先順位2: 同一パッケージのクラス（将来の拡張用）
+    String packageName = moduleNode.getPackageName();
+    if (packageName != null && !packageName.isEmpty()) {
+      String samePackageClass = packageName + "." + className;
+      if (isClassExists(samePackageClass)) {
+        return ClassHelper.make(samePackageClass);
+      }
+    }
+
+    // 優先順位3: スターインポートから解決を試みる
+    for (var starImport : moduleNode.getStarImports()) {
+      String starPackageName = starImport.getPackageName();
+      if (starPackageName != null) {
+        // パッケージ名が "." で終わる場合は削除
+        if (starPackageName.endsWith(".")) {
+          starPackageName = starPackageName.substring(0, starPackageName.length() - 1);
+        }
+        String fullClassName = starPackageName + "." + className;
+        if (isClassExists(fullClassName)) {
+          return ClassHelper.make(fullClassName);
+        }
+      }
+    }
+
+    // 優先順位4: デフォルトインポート（java.lang.*、groovy.lang.*など）
+    String[] defaultPackages = {
+      "java.lang", "groovy.lang", "java.util", "java.io", "java.net", "groovy.util"
+    };
+    for (String pkg : defaultPackages) {
+      String fullClassName = pkg + "." + className;
+      if (isClassExists(fullClassName)) {
+        return ClassHelper.make(fullClassName);
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * クラスが存在するかどうかをキャッシュ付きで確認
+   *
+   * @param fullClassName 完全修飾クラス名
+   * @return クラスが存在する場合true
+   */
+  private boolean isClassExists(String fullClassName) {
+    synchronized (classExistenceCache) {
+      return classExistenceCache.computeIfAbsent(
+          fullClassName,
+          className -> {
+            try {
+              Class.forName(className);
+              return true;
+            } catch (ClassNotFoundException e) {
+              // プロジェクト固有のクラスは解決できないため、デバッグレベルでログ出力
+              logger.debug("Class not found in classpath: {}", className);
+              return false;
+            }
+          });
+    }
   }
 }

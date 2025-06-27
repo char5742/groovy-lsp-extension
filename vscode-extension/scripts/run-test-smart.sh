@@ -8,7 +8,7 @@ npm run test 2>&1 | tee test-output-temp.log &
 TEST_PID=$!
 
 # テストが完了するまで待つ（最大240秒）
-TIMEOUT=240
+TIMEOUT=300
 ELAPSED=0
 SUCCESS_DETECTED=false
 

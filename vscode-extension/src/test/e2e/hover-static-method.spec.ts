@@ -2,6 +2,7 @@ import { ok } from 'node:assert/strict';
 import { join } from 'node:path';
 import { type Extension, type Hover, commands, extensions, window, workspace } from 'vscode';
 import type { ExtensionApi } from '../../types.ts';
+import { getHoverContent } from './test-helpers.ts';
 
 describe('静的メソッドとqualified呼び出しのホバーE2Eテスト', () => {
   let extension: Extension<ExtensionApi> | undefined;
@@ -38,9 +39,7 @@ describe('静的メソッドとqualified呼び出しのホバーE2Eテスト', (
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', staticMethodDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     // FQN付きシグネチャが表示されることを確認
     ok(hoverContent.includes('now') || hoverContent.includes('Instant'), 'nowメソッドの情報が表示される必要があります');
@@ -61,9 +60,7 @@ describe('静的メソッドとqualified呼び出しのホバーE2Eテスト', (
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', staticMethodDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(hoverContent.includes('sin'), 'sinメソッドの情報が表示される必要があります');
 
@@ -83,9 +80,7 @@ describe('静的メソッドとqualified呼び出しのホバーE2Eテスト', (
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', staticMethodDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(
       hoverContent.includes('now') || hoverContent.includes('メソッド'),
@@ -102,9 +97,7 @@ describe('静的メソッドとqualified呼び出しのホバーE2Eテスト', (
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', staticMethodDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(hoverContent.includes('PI') || hoverContent.includes('double'), 'PIフィールドの情報が表示される必要があります');
   });
@@ -118,9 +111,7 @@ describe('静的メソッドとqualified呼び出しのホバーE2Eテスト', (
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', staticMethodDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     ok(hoverContent.includes('now'), 'nowメソッドの情報が表示される必要があります');
 
@@ -140,9 +131,7 @@ describe('静的メソッドとqualified呼び出しのホバーE2Eテスト', (
     const hovers = await commands.executeCommand<Hover[]>('vscode.executeHoverProvider', staticMethodDoc.uri, position);
 
     ok(hovers && hovers.length > 0, 'ホバー結果が返される必要があります');
-    const hoverContent = hovers[0].contents
-      .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
-      .join('');
+    const hoverContent = getHoverContent(hovers);
 
     // エイリアスLD自体の情報が表示されることを確認
     ok(
