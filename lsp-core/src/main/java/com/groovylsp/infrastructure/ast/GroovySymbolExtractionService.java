@@ -61,7 +61,8 @@ public class GroovySymbolExtractionService implements SymbolExtractionService {
    * @return LRUキャッシュ
    */
   private static Map<String, Boolean> createLRUCache(int maxSize) {
-    return new LinkedHashMap<String, Boolean>(16, 0.75f, true) {
+    int initialCapacity = (int) Math.ceil(maxSize / 0.75f);
+    return new LinkedHashMap<String, Boolean>(initialCapacity, 0.75f, true) {
       @Override
       protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
         return size() > maxSize;
