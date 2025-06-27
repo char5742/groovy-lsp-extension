@@ -167,6 +167,20 @@ public class GroovyDocumentationService implements DocumentationService {
     return Option.none();
   }
 
+  /**
+   * ソースコード内容からドキュメントコメントを抽出
+   *
+   * @param node ASTノード
+   * @param sourceContent ソースファイルの内容
+   * @return ドキュメントコメント
+   */
+  @Override public Option<String> extractDocCommentFromSource(ASTNode node, String sourceContent) {
+    if (sourceExtractor != null && sourceContent != null) {
+      return sourceExtractor.extractDocCommentFromSource(sourceContent, node.getLineNumber());
+    }
+    return Option.none();
+  }
+
   private String cleanComment(String comment) {
     // /** */ や /* */ を除去
     String cleaned = comment.replaceAll("^/\\*\\*?\\s*", "").replaceAll("\\s*\\*/$", "");

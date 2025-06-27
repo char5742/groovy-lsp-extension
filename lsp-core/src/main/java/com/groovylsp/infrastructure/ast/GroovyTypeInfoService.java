@@ -2,7 +2,7 @@ package com.groovylsp.infrastructure.ast;
 
 import com.groovylsp.domain.model.AstInfo;
 import com.groovylsp.domain.model.ClassInfo;
-
+import com.groovylsp.domain.model.Documentation;
 import com.groovylsp.domain.model.MethodInfo;
 import com.groovylsp.domain.model.ScopeManager;
 import com.groovylsp.domain.model.SymbolDefinition;
@@ -108,7 +108,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
               logger.debug("パース成功。クラス数: {}", parseResult.getClasses().size());
 
               // 指定位置の要素を探索
-              var visitor = new TypeInfoVisitor(position, uri);
+              var visitor = new TypeInfoVisitor(position, uri, content);
               for (ClassNode classNode : parseResult.getClasses()) {
                 logger.debug("クラスを訪問: {}", classNode.getName());
                 visitor.visitClass(classNode);
@@ -308,11 +308,25 @@ public class GroovyTypeInfoService implements TypeInfoService {
    * @param name シンボル名
    * @param type 型情報
    * @param kind 種類
+   * @param sourceContent ソースファイルの内容（オプション）
    * @return TypeInfo
    */
-  private TypeInfo createTypeInfoWithDocumentation(ASTNode node, String name, String type, TypeInfo.Kind kind) {
+  private TypeInfo createTypeInfoWithDocumentation(ASTNode node, String name, String type, TypeInfo.Kind kind, String sourceContent) {
     // DocumentationServiceを使用してドキュメントを取得
-    var documentation = documentationService.getDocumentation(node);
+    var documentation = Option.<Documentation>none();
+    
+    if (sourceContent != null) {
+      // ソースコードからドキュメントコメントを抽出
+      var docComment = documentationService.extractDocCommentFromSource(node, sourceContent);
+      if (docComment.isDefined()) {
+        documentation = Option.of(documentationService.parseDocumentationComment(docComment.get()));
+      }
+    }
+    
+    if (documentation.isEmpty()) {
+      // フォールバック: ASTノードから直接取得を試行
+      documentation = documentationService.getDocumentation(node);
+    }
     
     String docString = null;
     if (documentation.isDefined()) {
@@ -322,6 +336,19 @@ public class GroovyTypeInfoService implements TypeInfoService {
     return new TypeInfo(name, type, kind, docString, null);
   }
 
+  /**
+   * ASTノードからドキュメント付きTypeInfoを作成（ソースコンテンツなし）
+   *
+   * @param node ASTノード
+   * @param name シンボル名
+   * @param type 型情報
+   * @param kind 種類
+   * @return TypeInfo
+   */
+  private TypeInfo createTypeInfoWithDocumentation(ASTNode node, String name, String type, TypeInfo.Kind kind) {
+    return createTypeInfoWithDocumentation(node, name, type, kind, null);
+  }
+
   /** AST訪問者クラス（型情報を探索） */
   private class TypeInfoVisitor extends ClassCodeVisitorSupport {
     private final Position targetPosition;
@@ -329,12 +356,14 @@ public class GroovyTypeInfoService implements TypeInfoService {
     private @Nullable TypeInfo foundTypeInfo;
     private final Map<String, ClassNode> variableTypes = new HashMap<>(); // 変数名と型のマッピング
     private @Nullable AstInfo astInfo; // AST情報をキャッシュ
+    private final String sourceContent; // ソースファイルの内容
 
-    public TypeInfoVisitor(Position targetPosition, String uri) {
+    public TypeInfoVisitor(Position targetPosition, String uri, String sourceContent) {
       // LSPの位置は0ベース、Groovyは1ベースなので+1で変換
       this.targetPosition =
           new Position(targetPosition.getLine() + 1, targetPosition.getCharacter() + 1);
       this.uri = uri;
+      this.sourceContent = sourceContent;
       logger.debug(
           "TypeInfoVisitor initialized - Original position: {}:{}, Adjusted position: {}:{}",
           targetPosition.getLine(),
@@ -975,8 +1004,22 @@ public class GroovyTypeInfoService implements TypeInfoService {
       // クラスとして扱う（インターフェースも含む）
       TypeInfo.Kind kind = TypeInfo.Kind.CLASS;
 
-      // DocumentationServiceを使用してドキュメントを取得
-      var documentation = documentationService.getDocumentation(classNode);
+      // DocumentationServiceを使用してドキュメントを取得（ソースコンテンツ付き）
+      var documentation = Option.<Documentation>none();
+      
+      if (sourceContent != null) {
+        // ソースコードからドキュメントコメントを抽出
+        var docComment = documentationService.extractDocCommentFromSource(classNode, sourceContent);
+        if (docComment.isDefined()) {
+          documentation = Option.of(documentationService.parseDocumentationComment(docComment.get()));
+        }
+      }
+      
+      if (documentation.isEmpty()) {
+        // フォールバック: ASTノードから直接取得を試行
+        documentation = documentationService.getDocumentation(classNode);
+      }
+      
       String docString = null;
       if (documentation.isDefined()) {
         docString = documentationService.formatDocumentation(documentation.get());

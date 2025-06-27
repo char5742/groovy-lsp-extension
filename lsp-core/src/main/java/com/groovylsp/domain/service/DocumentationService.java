@@ -42,4 +42,13 @@ public interface DocumentationService {
    * @return 解析されたドキュメント情報
    */
   Documentation parseDocumentationComment(String comment);
+
+  /**
+   * ソースコード内容からドキュメントコメントを抽出
+   *
+   * @param node ASTノード
+   * @param sourceContent ソースファイルの内容
+   * @return ドキュメントコメント
+   */
+  Option<String> extractDocCommentFromSource(ASTNode node, String sourceContent);
 }
