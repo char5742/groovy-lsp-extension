@@ -1,0 +1,53 @@
+version: '3'
+
+# Taskfile for building Groovy LSP server JAR and VSCode extension package
+
+tasks:
+  # ---------------------------------------------------------------------
+  # Build the fat JAR of the Groovy Language Server (shadowJar)
+  # ---------------------------------------------------------------------
+  build-jar:
+    desc: Build groovy-lsp shadow JAR
+    cmds:
+      - ./lsp-core/gradlew -p lsp-core shadowJar
+
+  # ---------------------------------------------------------------------
+  # Copy the generated JAR into the VSCode extension so it is packaged
+  # ---------------------------------------------------------------------
+  copy-jar:
+    desc: Copy generated JAR into vscode-extension/server directory
+    deps:
+      - build-jar
+    cmds:
+      - mkdir -p vscode-extension/server
+      - cp lsp-core/build/libs/groovy-lsp-server.jar vscode-extension/server/
+
+  # ---------------------------------------------------------------------
+  # Install NPM dependencies and compile the extension bundle
+  # ---------------------------------------------------------------------
+  compile-extension:
+    desc: Install deps & compile TS → JS for the VSCode extension
+    dir: vscode-extension
+    cmds:
+      - npm install
+      - npm run compile
+
+  # ---------------------------------------------------------------------
+  # Create the VSIX package that includes the JAR
+  # ---------------------------------------------------------------------
+  package-extension:
+    desc: "Build VSIX package (requires vsce installed: npm i -g vsce)"
+    dir: vscode-extension
+    deps:
+      - copy-jar
+      - compile-extension
+    cmds:
+      - npx vsce package --no-git-tag-version --no-update-package-json
+
+  # ---------------------------------------------------------------------
+  # Convenience top-level task
+  # ---------------------------------------------------------------------
+  build:
+    desc: Build everything – JAR & VSIX
+    deps:
+      - package-extension 

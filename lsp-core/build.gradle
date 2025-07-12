@@ -73,8 +73,9 @@ tasks.withType(JavaExec).configureEach {
 }
 
 shadowJar {
-    archiveBaseName = 'groovy-lsp-server'
-    archiveClassifier = 'all'
+    // Always create a deterministic, version-independent JAR file name so
+    // VSCode extension can reference it without hard-coding the project version.
+    archiveFileName = 'groovy-lsp-server.jar'
     manifest {
         attributes 'Main-Class': 'com.groovylsp.Main'
     }

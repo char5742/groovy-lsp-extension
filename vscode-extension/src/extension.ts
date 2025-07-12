@@ -18,11 +18,8 @@ export async function activate(context: ExtensionContext): Promise<ExtensionApi>
   // LSPサーバーJARファイルのパス
   const serverJar = join(
     context.extensionPath,
-    '..',
-    'lsp-core',
-    'build',
-    'libs',
-    'groovy-lsp-server-0.0.1-SNAPSHOT-all.jar',
+    'server',
+    'groovy-lsp-server.jar',
   );
 
   // サーバーオプション
