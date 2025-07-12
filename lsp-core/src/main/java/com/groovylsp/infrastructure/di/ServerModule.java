@@ -10,12 +10,15 @@ import com.groovylsp.domain.repository.TextDocumentRepository;
 import com.groovylsp.domain.service.AstAnalysisService;
 import com.groovylsp.domain.service.BracketValidationService;
 import com.groovylsp.domain.service.DefinitionFinderService;
+import com.groovylsp.domain.service.DocumentationService;
 import com.groovylsp.domain.service.LineCountService;
 import com.groovylsp.domain.service.SymbolExtractionService;
 import com.groovylsp.domain.service.SymbolTableBuilderService;
 import com.groovylsp.domain.service.TypeInfoService;
 import com.groovylsp.infrastructure.ast.GroovySymbolExtractionService;
 import com.groovylsp.infrastructure.ast.GroovyTypeInfoService;
+import com.groovylsp.infrastructure.documentation.GroovyDocumentationService;
+import com.groovylsp.infrastructure.documentation.SourceDocumentExtractor;
 import com.groovylsp.infrastructure.parser.DocumentContentService;
 import com.groovylsp.infrastructure.parser.GroovyAstParser;
 import com.groovylsp.infrastructure.repository.InMemoryTextDocumentRepository;
@@ -69,14 +72,28 @@ public class ServerModule {
 
   @Provides
   @Singleton
+  public DocumentationService provideDocumentationService() {
+    // 循環依存を避けるため、DocumentationServiceを先に作成
+    return new GroovyDocumentationService();
+  }
+
+  @Provides
+  @Singleton
+  public SourceDocumentExtractor provideSourceDocumentExtractor(DocumentationService documentationService) {
+    return new SourceDocumentExtractor(documentationService);
+  }
+
+  @Provides
+  @Singleton
   public TypeInfoService provideTypeInfoService(
       GroovyAstParser parser,
       SymbolTable symbolTable,
       ScopeManager scopeManager,
       DocumentContentService documentContentService,
-      AstAnalysisService astAnalysisService) {
+      AstAnalysisService astAnalysisService,
+      DocumentationService documentationService) {
     return new GroovyTypeInfoService(
-        parser, symbolTable, scopeManager, documentContentService, astAnalysisService);
+        parser, symbolTable, scopeManager, documentContentService, astAnalysisService, documentationService);
   }
 
   @Provides

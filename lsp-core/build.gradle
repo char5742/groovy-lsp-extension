@@ -18,7 +18,7 @@ version = '0.0.1-SNAPSHOT'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(23)
+        languageVersion = JavaLanguageVersion.of(17)
     }
 }
 
@@ -64,12 +64,11 @@ application {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.release = 23
-    options.compilerArgs.add('--enable-preview')
+    options.release = 17
 }
 
 tasks.withType(JavaExec).configureEach {
-    jvmArgs '--enable-preview'
+    // Enable preview features if needed
 }
 
 shadowJar {
