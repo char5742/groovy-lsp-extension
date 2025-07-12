@@ -119,7 +119,7 @@ describe('Document Synchronization Test Suite', () => {
       'lsp-core',
       'build',
       'libs',
-      'groovy-lsp-server-0.0.1-SNAPSHOT-all.jar',
+      'groovy-lsp-server.jar',
     );
 
     lspServer = spawn('java', ['-jar', jarPath], {
