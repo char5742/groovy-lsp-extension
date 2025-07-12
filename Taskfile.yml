@@ -1,0 +1,34 @@
+version: '3'
+
+tasks:
+  build-jar:
+    desc: Build the Groovy LSP server JAR
+    dir: lsp-core
+    cmds:
+      - ./gradlew shadowJar
+
+  copy-jar:
+    desc: Copy the JAR to the VSCode extension server directory
+    deps: [build-jar]
+    cmds:
+      - mkdir -p vscode-extension/server
+      - cp lsp-core/build/libs/groovy-lsp-server.jar vscode-extension/server/
+
+  compile-extension:
+    desc: Compile the VSCode extension
+    dir: vscode-extension
+    cmds:
+      - npm run compile
+
+  package-extension:
+    desc: Package the VSCode extension
+    dir: vscode-extension
+    deps: [copy-jar, compile-extension]
+    cmds:
+      - npm run package
+
+  build:
+    desc: Build the entire project
+    deps: [package-extension]
+    cmds:
+      - echo "Build completed successfully"

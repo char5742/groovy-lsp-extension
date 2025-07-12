@@ -34,3 +34,6 @@ test-fixtures/.gradle/
 test-fixtures/build/
 test-fixtures/.idea/
 *.class
+
+# Server jar
+server/groovy-lsp-server.jar
