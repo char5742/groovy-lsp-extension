@@ -2365,7 +2365,7 @@ public class GroovyTypeInfoService implements TypeInfoService {
      * メソッドに@Overrideアノテーションがあるかどうかを判定
      *
      * @param method メソッドノード
-     * @return @Overrideアノテーションがある場合true
+     *  @Overrideアノテーションがある場合true
      */
     private boolean hasOverrideAnnotation(MethodNode method) {
       return method.getAnnotations() != null
